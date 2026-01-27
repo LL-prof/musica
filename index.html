@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lectura Musical Infantil</title>
+<title>Lectura musical</title>
 
 <style>
 :root{
@@ -14,16 +14,13 @@
   --ok:#25c26e;
   --yellow:rgba(180,140,0,.35);
 }
-
 *{box-sizing:border-box}
-
 body{
   margin:0;
   background:radial-gradient(1200px 700px at 30% 10%, #20283a 0%, var(--bg) 60%, #070a11 100%);
   font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
   height:100vh;
 }
-
 .wrap{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -31,96 +28,52 @@ body{
   padding:14px;
   height:100vh;
 }
-
 .panel{
   background:rgba(255,255,255,.05);
   border-radius:18px;
   box-shadow:var(--shadow);
   overflow:auto;
 }
-
 .sheet{
   background:#fff;
   border-radius:16px;
   padding:12px;
   margin-bottom:14px;
 }
+.stage{position:relative}
+svg{width:100%;height:auto;display:block}
 
-.stage{ position:relative }
-
-svg{ width:100%; height:auto; display:block }
-
-/* BOTONES */
-.durRow{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:12px;
-  margin-bottom:10px;
-}
+/* botones */
+.durRow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px}
 .durBtn{
-  height:64px;
-  border-radius:16px;
-  border:2px solid #aaa;
-  background:#fff;
-  font-weight:900;
-  cursor:pointer;
+  height:60px;border-radius:16px;border:2px solid #aaa;
+  background:#fff;font-weight:900;cursor:pointer
 }
-.durBtn.active{
-  box-shadow:0 0 0 4px rgba(37,194,110,.25);
-}
-
-.playRow{
-  display:flex;
-  justify-content:center;
-  gap:12px;
-  margin-bottom:6px;
-}
+.durBtn.active{box-shadow:0 0 0 4px rgba(37,194,110,.25)}
+.playRow{display:flex;justify-content:center;gap:12px;margin-bottom:6px}
 .playBtn{
-  width:64px;
-  height:48px;
-  border-radius:14px;
-  border:2px solid #aaa;
-  background:#fff;
-  cursor:pointer;
-  transition:.15s;
+  width:60px;height:46px;border-radius:14px;border:2px solid #aaa;
+  background:#fff;cursor:pointer;transition:.15s
 }
-.playBtn:hover{ background:#eaeaea }
-.playBtn:active{ background:#d5d5d5 }
-.playBtn.ok{ box-shadow:0 0 0 4px rgba(37,194,110,.3) }
+.playBtn:hover{background:#eaeaea}
+.playBtn:active{background:#d0d0d0}
+.playBtn.ok{box-shadow:0 0 0 4px rgba(37,194,110,.3)}
 
-/* POOL */
-.pool{
-  display:flex;
-  justify-content:center;
-  gap:12px;
-  margin-top:8px;
-}
+/* pool */
+.pool{display:flex;justify-content:center;gap:12px;margin-top:8px}
 .token{
-  width:72px;
-  height:84px;
-  background:#111;
-  color:#fff;
-  border-radius:18px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:4px;
-  cursor:grab;
+  width:72px;height:84px;background:#111;color:#fff;border-radius:18px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;cursor:grab;user-select:none
 }
-.token.locked{ opacity:.3; cursor:default }
+.token.locked{opacity:.3;cursor:default}
+.name{font-weight:900;font-size:14px}
 
-.name{ font-weight:900; font-size:14px }
-
-/* MARCADOR VERDE */
+/* marcador */
 .marker{
-  position:absolute;
-  width:40px;
-  height:40px;
-  border-radius:12px;
-  background:rgba(37,194,110,.25);
-  border:2px solid rgba(37,194,110,.7);
-  transform:translate(-50%,-50%);
+  position:absolute;width:38px;height:38px;border-radius:12px;
+  background:rgba(37,194,110,.25);border:2px solid rgba(37,194,110,.7);
+  transform:translate(-50%,-50%)
 }
 </style>
 </head>
@@ -132,8 +85,8 @@ svg{ width:100%; height:auto; display:block }
 <div class="panel">
   <div class="sheet">
     <div class="durRow">
-      <button class="durBtn active" id="negra">NEGRA</button>
-      <button class="durBtn" id="blanca">BLANCA</button>
+      <button class="durBtn active" id="btnNegra">NEGRA</button>
+      <button class="durBtn" id="btnBlanca">BLANCA</button>
     </div>
 
     <svg viewBox="0 0 760 280" id="refSvg">
@@ -163,40 +116,40 @@ function audio(){ if(!ctx) ctx=new AudioContext(); if(ctx.state==="suspended") c
 function tone(f,d){
   audio();
   const o=ctx.createOscillator(), g=ctx.createGain();
-  o.frequency.value=f; o.type="sine";
+  o.type="sine"; o.frequency.value=f;
   g.gain.setValueAtTime(.0001,ctx.currentTime);
   g.gain.exponentialRampToValueAtTime(.35,ctx.currentTime+.03);
   g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+d/1000);
   o.connect(g); g.connect(ctx.destination);
   o.start(); o.stop(ctx.currentTime+d/1000+.05);
 }
-const NEGRA=800, BLANCA=2600;
+const NEGRA=900, BLANCA=2600;
 let dur=NEGRA;
 
-// silencio inicial + reproducción rápida
+// silencio + secuencia rápida
 async function playSeq(freqs){
   await new Promise(r=>setTimeout(r,500));
   for(const f of freqs){
     tone(f,dur);
-    await new Promise(r=>setTimeout(r,dur+90));
+    await new Promise(r=>setTimeout(r,dur+80));
   }
 }
 
-// ================= DATOS =================
+// ================= MAPEO =================
 const MAP={
   do:[261.63,205],
-  re:[293.66,192.5],
+  re:[293.66,192],
   mi:[329.63,180],
-  fa:[349.23,167.5],
+  fa:[349.23,167],
   sol:[392,155],
-  la:[440,142.5],
+  la:[440,142],
   si:[493.88,130],
-  do5:[523.25,117.5]
+  do5:[523.25,117]
 };
 const SCALE=["do","re","mi","fa","sol","la","si","do5"];
 
-// ================= NOTA SVG =================
-function noteSVG(x,y,ledger=false){
+// ================= SVG NOTA =================
+function noteSVG(x,y,ledger){
   return `
   <g transform="translate(${x},${y})">
     ${ledger?`<line x1="-22" y1="0" x2="22" y2="0" stroke="#000" stroke-width="2"/>`:``}
@@ -211,14 +164,18 @@ const refL=document.getElementById("refNames");
 SCALE.forEach((s,i)=>{
   const x=190+i*70;
   const y=MAP[s][1];
-  refN.insertAdjacentHTML("beforeend",noteSVG(x,y,s==="do"));
+  const g=document.createElementNS("http://www.w3.org/2000/svg","g");
+  g.innerHTML=noteSVG(x,y,s==="do");
+  g.style.cursor="pointer";
+  g.onclick=()=>tone(MAP[s][0],dur);
+  refN.append(g);
   refL.insertAdjacentHTML("beforeend",
     `<text x="${x-14}" y="265" font-size="16">${s==="do5"?"do":s}</text>`);
 });
 
-// ================= BOTONES DURACIÓN =================
-negra.onclick=()=>{dur=NEGRA; negra.classList.add("active"); blanca.classList.remove("active")};
-blanca.onclick=()=>{dur=BLANCA; blanca.classList.add("active"); negra.classList.remove("active")};
+// ================= DURACIÓN =================
+btnNegra.onclick=()=>{dur=NEGRA;btnNegra.classList.add("active");btnBlanca.classList.remove("active")};
+btnBlanca.onclick=()=>{dur=BLANCA;btnBlanca.classList.add("active");btnNegra.classList.remove("active")};
 
 // ================= EJERCICIOS =================
 const DATA=[
@@ -236,19 +193,12 @@ DATA.forEach(target=>{
 
   const playRow=document.createElement("div");
   playRow.className="playRow";
-
   const p1=document.createElement("button");
-  p1.className="playBtn";
-  p1.innerHTML="▶";
+  p1.className="playBtn"; p1.textContent="▶";
   const p2=document.createElement("button");
-  p2.className="playBtn";
-  p2.innerHTML="▶";
-
+  p2.className="playBtn"; p2.textContent="▶";
   playRow.append(p1,p2);
   sheet.append(playRow);
-
-  p1.onclick=()=>playSeq(target.map(n=>MAP[n][0]));
-  p2.onclick=()=>playSeq(placed.map(n=>MAP[n][0]));
 
   const stage=document.createElement("div");
   stage.className="stage";
@@ -271,8 +221,58 @@ DATA.forEach(target=>{
     t.className="token";
     t.innerHTML=`♪<div class="name">${n==="do5"?"do":n}</div>`;
     t.onclick=()=>tone(MAP[n][0],dur);
+
+    t.onpointerdown=e=>{
+      if(t.classList.contains("locked")) return;
+      const rect=t.getBoundingClientRect();
+      const ghost=t.cloneNode(true);
+      ghost.style.position="fixed";
+      ghost.style.left=rect.left+"px";
+      ghost.style.top=rect.top+"px";
+      ghost.style.opacity=".7";
+      document.body.append(ghost);
+
+      const move=ev=>{
+        ghost.style.left=ev.clientX-rect.width/2+"px";
+        ghost.style.top=ev.clientY-rect.height/2+"px";
+      };
+      const up=ev=>{
+        document.removeEventListener("pointermove",move);
+        document.removeEventListener("pointerup",up);
+        ghost.remove();
+
+        const r=stage.getBoundingClientRect();
+        if(ev.clientX>r.left && ev.clientX<r.right &&
+           ev.clientY>r.top && ev.clientY<r.bottom){
+          const relY=(ev.clientY-r.top)/r.height*280;
+          let best=null,d=1e9;
+          for(const k in MAP){
+            const dy=Math.abs(MAP[k][1]-relY);
+            if(dy<d){d=dy;best=k}
+          }
+          const idx=placed.indexOf(null);
+          if(best===target[idx]){
+            placed[idx]=best;
+            placedG.insertAdjacentHTML("beforeend",
+              noteSVG(300+idx*100,MAP[best][1],best==="do"));
+            const m=document.createElement("div");
+            m.className="marker";
+            m.style.left=(300+idx*100)/760*stage.offsetWidth+"px";
+            m.style.top=MAP[best][1]/280*stage.offsetHeight+"px";
+            stage.append(m);
+            t.classList.add("locked");
+            tone(MAP[best][0],dur);
+          }
+        }
+      };
+      document.addEventListener("pointermove",move);
+      document.addEventListener("pointerup",up);
+    };
     pool.append(t);
   });
+
+  p1.onclick=()=>playSeq(target.map(n=>MAP[n][0]));
+  p2.onclick=()=>playSeq(placed.filter(Boolean).map(n=>MAP[n][0]));
 
   exDiv.append(sheet);
 });
