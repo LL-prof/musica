@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Music Drag</title>
+  <title>Partituras (arrastrar notas)</title>
   <style>
     :root{
       --bg:#10131a;
@@ -12,13 +12,16 @@
       --shadow: 0 14px 36px rgba(0,0,0,.35);
       --radius:18px;
       --gap:14px;
+
       --ok:#25c26e;
       --yellow: rgba(180, 140, 0, 0.38);
       --yellowStroke: rgba(130, 95, 0, 0.55);
+
       --btnBorder: rgba(0,0,0,.18);
       --btnShadow: 0 10px 22px rgba(0,0,0,.14);
     }
-    *{box-sizing:border-box}
+
+    *{ box-sizing:border-box; }
     body{
       margin:0;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
@@ -26,6 +29,7 @@
       height:100vh;
       overflow:hidden;
     }
+
     .wrap{
       height:100vh;
       display:grid;
@@ -33,6 +37,7 @@
       gap: var(--gap);
       padding: 14px;
     }
+
     .panel{
       background: rgba(255,255,255,.05);
       border: 1px solid rgba(255,255,255,.10);
@@ -43,13 +48,13 @@
       display:flex;
       flex-direction:column;
     }
+
     .content{
       padding: 12px;
       overflow:auto;
       min-height:0;
     }
 
-    /* White sheet */
     .sheet{
       background: var(--sheet);
       border-radius: 16px;
@@ -58,12 +63,13 @@
       overflow:hidden;
       position:relative;
     }
+
     .sheetInner{
       padding: 10px 10px 12px 10px;
       position:relative;
     }
 
-    /* Big duration buttons (only allowed text) */
+    /* Big duration buttons (ONLY text allowed besides note names) */
     .durRow{
       display:grid;
       grid-template-columns: 1fr 1fr;
@@ -94,21 +100,30 @@
     .stage{
       position:relative;
       width:100%;
-      max-width: 680px;
+      max-width: 720px;
       margin: 0 auto;
     }
+
     svg.staff{
       width:100%;
       height:auto;
       display:block;
     }
 
-    /* Exercises list */
+    /* Reference note labels under notes */
+    .refLabels text{
+      font-weight: 900;
+      font-size: 16px;
+      fill: #111;
+      letter-spacing: .2px;
+    }
+
+    /* Exercises */
     .exercise{
       margin-bottom: 12px;
     }
 
-    /* Exercise controls: two play buttons, no text */
+    /* two play buttons, no text */
     .playRow{
       display:flex;
       gap: 12px;
@@ -133,7 +148,7 @@
       box-shadow: 0 0 0 5px rgba(37,194,110,.20), var(--btnShadow);
     }
 
-    /* Pool of draggable notes (no labels) */
+    /* Pool tokens: note symbol + name */
     .pool{
       display:flex;
       gap:10px;
@@ -142,24 +157,22 @@
       justify-content:center;
     }
     .noteToken{
-      width:56px; height:56px;
-      border-radius: 999px;
+      width:72px;
+      height:78px;
+      border-radius: 18px;
       background: #111;
       color: #fff;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-weight:900;
       user-select:none;
       touch-action:none;
       cursor:grab;
       box-shadow: 0 10px 22px rgba(0,0,0,.18);
       border: 2px solid rgba(255,255,255,.12);
-    }
-    .noteToken::before{
-      content:"♪";
-      font-size:22px;
-      opacity:.95;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap: 6px;
+      padding-top: 4px;
     }
     .noteToken:active{ cursor:grabbing; transform: translateY(1px); }
     .noteToken.locked{
@@ -167,6 +180,13 @@
       cursor:default;
       filter: grayscale(.2);
       transform:none;
+    }
+    .noteName{
+      font-weight: 900;
+      font-size: 14px;
+      letter-spacing: .3px;
+      text-transform: lowercase;
+      opacity: .95;
     }
 
     /* Green marker appears only after correct placement */
@@ -199,24 +219,28 @@
           <button class="durBtn active" id="btnNegra">NEGRA</button>
           <button class="durBtn" id="btnBlanca">BLANCA</button>
         </div>
+
         <div class="sheetInner">
           <div class="stage">
-            <svg class="staff" id="refSvg" viewBox="0 0 760 240" role="img" aria-label="Referencia">
-              <!-- pentagrama -->
+            <svg class="staff" id="refSvg" viewBox="0 0 760 280" role="img" aria-label="Referencia">
+              <!-- staff lines -->
               <g stroke="#111" stroke-width="2">
-                <line x1="40" y1="60" x2="720" y2="60" />
-                <line x1="40" y1="85" x2="720" y2="85" />
-                <line x1="40" y1="110" x2="720" y2="110" />
-                <line x1="40" y1="135" x2="720" y2="135" />
-                <line x1="40" y1="160" x2="720" y2="160" />
+                <line x1="40" y1="80" x2="720" y2="80" />
+                <line x1="40" y1="105" x2="720" y2="105" />
+                <line x1="40" y1="130" x2="720" y2="130" />
+                <line x1="40" y1="155" x2="720" y2="155" />
+                <line x1="40" y1="180" x2="720" y2="180" />
               </g>
-              <text x="54" y="130" font-size="52" fill="#111" font-weight="800">𝄞</text>
 
-              <g id="refHighlight"></g>
+              <!-- clef -->
+              <text x="54" y="155" font-size="56" fill="#111" font-weight="800">𝄞</text>
+
               <g id="refNotes"></g>
+              <g class="refLabels" id="refLabels"></g>
             </svg>
           </div>
         </div>
+
       </div>
     </div>
   </section>
@@ -229,12 +253,13 @@
 </div>
 
 <script>
-  // ========= AUDIO (offline) =========
+  // ===================== AUDIO (offline) =====================
   let audioCtx = null;
   function ensureAudio(){
     if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     if(audioCtx.state === "suspended") audioCtx.resume();
   }
+
   function playTone(freq, ms){
     try{
       ensureAudio();
@@ -254,6 +279,7 @@
       o.stop(now + ms/1000 + 0.03);
     }catch(e){}
   }
+
   function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
   async function playSequence(freqs, noteMs, gapMs){
     for(const f of freqs){
@@ -262,40 +288,48 @@
     }
   }
 
-  // ========= SOLFEO MAP =========
-  // do4 -> do5 (internally: do5 for the top do)
+  // ===================== SOLFEO + POSITIONS (clave de sol) =====================
+  // Staff lines at y: 80,105,130,155,180. Bottom line y=180 is MI (E4).
+  // RE is the space below that (floating). DO is ledger line below (short line only).
   const SOL_TO_FREQ = {
-    do: 261.63,
-    re: 293.66,
-    mi: 329.63,
-    fa: 349.23,
-    sol:392.00,
-    la: 440.00,
-    si: 493.88,
-    do5:523.25
+    do: 261.63,  // C4 (ledger)
+    re: 293.66,  // D4 (space below)
+    mi: 329.63,  // E4 (bottom line)
+    fa: 349.23,  // F4 (space)
+    sol:392.00,  // G4 (line)
+    la: 440.00,  // A4 (space)
+    si: 493.88,  // B4 (line)
+    do5:523.25   // C5 (space)
   };
+
+  // Vertical positions in this SVG (viewBox 760x280)
   const SOL_TO_Y = {
-    do: 160,
-    re: 147.5,
-    mi: 135,
-    fa: 122.5,
-    sol:110,
-    la: 97.5,
-    si: 85,
-    do5:72.5
+    do: 205,     // ledger line below staff
+    re: 192.5,   // floating space below staff
+    mi: 180,     // bottom line
+    fa: 167.5,   // space
+    sol:155,     // line
+    la: 142.5,   // space
+    si:130,      // line
+    do5:117.5    // space
   };
+
   const BANDS = [
-    {sol:"do",  y:160},
-    {sol:"re",  y:147.5},
-    {sol:"mi",  y:135},
-    {sol:"fa",  y:122.5},
-    {sol:"sol", y:110},
-    {sol:"la",  y:97.5},
-    {sol:"si",  y:85},
-    {sol:"do5", y:72.5}
+    {sol:"do",  y:SOL_TO_Y.do},
+    {sol:"re",  y:SOL_TO_Y.re},
+    {sol:"mi",  y:SOL_TO_Y.mi},
+    {sol:"fa",  y:SOL_TO_Y.fa},
+    {sol:"sol", y:SOL_TO_Y.sol},
+    {sol:"la",  y:SOL_TO_Y.la},
+    {sol:"si",  y:SOL_TO_Y.si},
+    {sol:"do5", y:SOL_TO_Y.do5}
   ];
 
-  // ========= DURATIONS (doubled) =========
+  function solDisplay(sol){
+    return sol === "do5" ? "do" : sol;
+  }
+
+  // ===================== DURATIONS (doubled) =====================
   let mode = "negra";
   const NEGRA_MS = 640;   // doubled
   const BLANCA_MS = 2200; // doubled
@@ -303,39 +337,60 @@
 
   const btnNegra = document.getElementById("btnNegra");
   const btnBlanca = document.getElementById("btnBlanca");
+
   btnNegra.addEventListener("pointerdown", () => {
     ensureAudio();
     mode = "negra";
     btnNegra.classList.add("active");
     btnBlanca.classList.remove("active");
-    playTone(440, 120);
   });
   btnBlanca.addEventListener("pointerdown", () => {
     ensureAudio();
     mode = "blanca";
     btnBlanca.classList.add("active");
     btnNegra.classList.remove("active");
-    playTone(440, 120);
   });
 
-  // ========= SVG NOTE =========
-  function svgNote(x, y, clickable, onClick){
-    const NS = "http://www.w3.org/2000/svg";
-    const g = document.createElementNS(NS, "g");
+  // ===================== SVG HELPERS =====================
+  function svgEl(name){
+    return document.createElementNS("http://www.w3.org/2000/svg", name);
+  }
+
+  // note drawing (black note with stem) + ledger line only for DO (C4)
+  function drawNoteSVG(x, y, sol, clickable, onClick){
+    const g = svgEl("g");
     g.setAttribute("transform", `translate(${x},${y})`);
     if(clickable){
       g.style.cursor = "pointer";
       g.addEventListener("pointerdown", (e) => { e.preventDefault(); onClick?.(); });
     }
-    const head = document.createElementNS(NS, "ellipse");
-    head.setAttribute("cx","0"); head.setAttribute("cy","0");
-    head.setAttribute("rx","12"); head.setAttribute("ry","9");
+
+    // ledger line ONLY for DO (C4): short line under note
+    if(sol === "do"){
+      const led = svgEl("line");
+      led.setAttribute("x1", "-22");
+      led.setAttribute("y1", "0");
+      led.setAttribute("x2", "22");
+      led.setAttribute("y2", "0");
+      led.setAttribute("stroke", "#111");
+      led.setAttribute("stroke-width", "2.2");
+      led.setAttribute("stroke-linecap", "round");
+      g.appendChild(led);
+    }
+
+    const head = svgEl("ellipse");
+    head.setAttribute("cx","0");
+    head.setAttribute("cy","0");
+    head.setAttribute("rx","12");
+    head.setAttribute("ry","9");
     head.setAttribute("fill","#111");
     head.setAttribute("transform","rotate(-18)");
 
-    const stem = document.createElementNS(NS, "line");
-    stem.setAttribute("x1","10"); stem.setAttribute("y1","-2");
-    stem.setAttribute("x2","10"); stem.setAttribute("y2","-48");
+    const stem = svgEl("line");
+    stem.setAttribute("x1","10");
+    stem.setAttribute("y1","-2");
+    stem.setAttribute("x2","10");
+    stem.setAttribute("y2","-50");
     stem.setAttribute("stroke","#111");
     stem.setAttribute("stroke-width","3");
     stem.setAttribute("stroke-linecap","round");
@@ -345,21 +400,75 @@
     return g;
   }
 
-  // ========= LEFT: Reference scale (no labels) =========
-  const refSvg = document.getElementById("refSvg");
-  const refNotesG = document.getElementById("refNotes");
+  // yellow band highlight (only within staff area width; includes DO/RE zones below)
+  function setBandHighlight(svg, yCenter){
+    let layer = svg._bandLayer;
+    if(!layer){
+      layer = svgEl("g");
+      layer.setAttribute("class","bandLayer");
+      // Put it after staff lines (which are first) but before notes
+      svg.insertBefore(layer, svg.querySelector(".placed") || svg.firstChild.nextSibling);
+      svg._bandLayer = layer;
+    }
+    layer.innerHTML = "";
+    if(yCenter == null) return;
+
+    const laneH = 18;
+    const x = 40, w = 680;
+
+    // clamp vertically so it stays inside the staff drawing area (not outside the sheet)
+    const topClamp = 65;     // just above top line
+    const botClamp = 230;    // includes DO ledger area
+    const y = Math.max(topClamp, Math.min(yCenter - laneH/2, botClamp - laneH));
+
+    const rect = svgEl("rect");
+    rect.setAttribute("x", String(x));
+    rect.setAttribute("y", String(y));
+    rect.setAttribute("width", String(w));
+    rect.setAttribute("height", String(laneH));
+    rect.setAttribute("rx", "6");
+    rect.setAttribute("fill", "var(--yellow)");
+    rect.setAttribute("stroke", "var(--yellowStroke)");
+    rect.setAttribute("stroke-width", "1.2");
+    layer.appendChild(rect);
+  }
+
+  function nearestBandFromViewBoxY(vby){
+    let best = null, bestD = Infinity;
+    for(const b of BANDS){
+      const d = Math.abs(b.y - vby);
+      if(d < bestD){ bestD = d; best = b; }
+    }
+    // tolerance
+    return (bestD <= 14) ? best : null;
+  }
+
+  // ===================== LEFT: REFERENCE SCALE =====================
   (function renderReference(){
+    const notesG = document.getElementById("refNotes");
+    const labelsG = document.getElementById("refLabels");
+
     const scale = ["do","re","mi","fa","sol","la","si","do5"];
     const startX = 190;
     const stepX  = 70;
+
     scale.forEach((sol, i) => {
       const x = startX + stepX*i;
       const y = SOL_TO_Y[sol];
-      refNotesG.appendChild(svgNote(x, y, true, () => playTone(SOL_TO_FREQ[sol], curMs())));
+
+      notesG.appendChild(
+        drawNoteSVG(x, y, sol, true, () => playTone(SOL_TO_FREQ[sol], curMs()))
+      );
+
+      const t = svgEl("text");
+      t.setAttribute("x", String(x - 14));
+      t.setAttribute("y", "265");
+      t.textContent = solDisplay(sol);
+      labelsG.appendChild(t);
     });
   })();
 
-  // ========= EXERCISES (soft -> harder) =========
+  // ===================== EXERCISES (soft -> harder) =====================
   const EXERCISES = [
     { id:"ex1",  target:["do","do","do"] },
     { id:"ex2",  target:["mi","mi","mi"] },
@@ -374,6 +483,7 @@
     { id:"ex11", target:["do5","si","la"] },
     { id:"ex12", target:["do","sol","do5"] }
   ];
+
   function shuffle(a){
     return a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(p=>p[1]);
   }
@@ -386,58 +496,10 @@
     `;
   }
 
-  // Slots (in viewBox coords) for placing notes left->right
-  const SLOT_X = [300, 400, 500];
+  // Exercise staff viewBox uses same geometry as reference
+  const SLOT_X = [320, 420, 520];
 
-  // ========= BAND HIGHLIGHT (yellow, inside pentagram only) =========
-  // We highlight a "lane" around the nearest band y, clipped to staff bounds (x:40..720, y:60..160).
-  function setBandHighlight(svg, yCenter){
-    const NS = "http://www.w3.org/2000/svg";
-    let g = svg._hlG;
-    if(!g){
-      g = svg.querySelector(".bandLayer");
-      if(!g){
-        g = document.createElementNS(NS, "g");
-        g.setAttribute("class", "bandLayer");
-        // Insert above staff lines but below placed notes
-        svg.insertBefore(g, svg.querySelector(".placed") || svg.firstChild);
-      }
-      svg._hlG = g;
-    }
-    g.innerHTML = "";
-    if(yCenter == null) return;
-
-    // Lane height ~ space between bands
-    const laneH = 18; // forgiving, but not huge
-    const y = yCenter - laneH/2;
-
-    // Clip inside staff area
-    const staffTop = 60, staffBot = 160;
-    const yy = Math.max(staffTop, Math.min(y, staffBot - laneH));
-
-    const rect = document.createElementNS(NS, "rect");
-    rect.setAttribute("x", "40");
-    rect.setAttribute("y", String(yy));
-    rect.setAttribute("width", "680"); // 720-40
-    rect.setAttribute("height", String(laneH));
-    rect.setAttribute("rx", "6");
-    rect.setAttribute("fill", "var(--yellow)");
-    rect.setAttribute("stroke", "var(--yellowStroke)");
-    rect.setAttribute("stroke-width", "1.2");
-    g.appendChild(rect);
-  }
-
-  function nearestBandFromViewBoxY(vby){
-    let best = null, bestD = Infinity;
-    for(const b of BANDS){
-      const d = Math.abs(b.y - vby);
-      if(d < bestD){ bestD = d; best = b; }
-    }
-    // Tolerance by height in viewBox coords
-    return (bestD <= 14) ? best : null;
-  }
-
-  // ========= DRAG ENGINE (touch-friendly) =========
+  // ===================== DRAG ENGINE =====================
   let drag = null;
 
   function startDrag(e, token, exState){
@@ -449,6 +511,7 @@
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
 
+    // Ghost clone
     const ghost = token.cloneNode(true);
     ghost.style.position = "fixed";
     ghost.style.left = rect.left + "px";
@@ -462,9 +525,6 @@
 
     drag = { token, ghost, exState, pointerId: e.pointerId, offsetX, offsetY };
 
-    // Optional: quick feedback sound on pick
-    playTone(440, 90);
-
     window.addEventListener("pointermove", onMove, {passive:false});
     window.addEventListener("pointerup", onUp, {passive:false});
   }
@@ -476,9 +536,7 @@
     drag.ghost.style.left = (e.clientX - drag.offsetX) + "px";
     drag.ghost.style.top  = (e.clientY - drag.offsetY) + "px";
 
-    // Update yellow band highlight inside THIS exercise staff
-    const { exState } = drag;
-    updateExerciseBandHighlight(exState, e.clientX, e.clientY);
+    updateExerciseBandHighlight(drag.exState, e.clientX, e.clientY);
   }
 
   function updateExerciseBandHighlight(exState, clientX, clientY){
@@ -494,10 +552,9 @@
       return;
     }
 
-    // Convert clientY to viewBox Y
-    const vbH = 240;
+    // Convert clientY to viewBox Y (viewBox height 280)
     const relY = (clientY - r.top) / r.height;
-    const vby = relY * vbH;
+    const vby = relY * 280;
 
     const band = nearestBandFromViewBoxY(vby);
     if(!band){
@@ -514,7 +571,7 @@
     e.preventDefault();
 
     const { token, ghost, exState } = drag;
-    const { stage, svg, target, placed } = exState;
+    const { stage, svg } = exState;
 
     // Clear highlight
     setBandHighlight(svg, null);
@@ -528,67 +585,65 @@
       dropX >= stageRect.left && dropX <= stageRect.right &&
       dropY >= stageRect.top  && dropY <= stageRect.bottom;
 
-    let accepted = false;
-
     if(inside){
-      // Determine band by dropY
       const relY = (dropY - stageRect.top) / stageRect.height;
-      const vby = relY * 240;
-      const band = nearestBandFromViewBoxY(vby);
+      const vby = relY * 280;
 
+      const band = nearestBandFromViewBoxY(vby);
       if(band){
         const solDragged = token.dataset.sol;
-        const nextIndex = placed.findIndex(x => x == null);
+        const nextIndex = exState.placed.findIndex(x => x == null);
 
         if(nextIndex !== -1){
-          const expected = target[nextIndex];
+          const expected = exState.target[nextIndex];
 
-          // Must match: the band (where they dropped) + the dragged note + the expected target at that slot
-          if(solDragged === band.sol && solDragged === expected){
-            // Place note neatly at slot position
+          // Correct if:
+          // 1) dragged note matches expected slot
+          // 2) drop height band matches that note
+          if(solDragged === expected && band.sol === solDragged){
             const x = SLOT_X[nextIndex];
             const y = SOL_TO_Y[solDragged];
 
             exState.placed[nextIndex] = solDragged;
 
-            // Draw note in SVG
-            const placedG = svg.querySelector(".placed");
-            placedG.appendChild(svgNote(x, y, false));
+            // Draw note on staff
+            exState.placedG.appendChild(drawNoteSVG(x, y, solDragged, false));
 
-            // Green marker at that position
+            // Green marker (where the note is)
             showMarker(exState, x, y);
 
+            // Lock token
             token.classList.add("locked");
+
+            // Sound (only note)
             playTone(SOL_TO_FREQ[solDragged], curMs());
 
-            accepted = true;
+            // Update child play green state
             updateChildPlayState(exState);
-          } else {
-            playTone(196.00, 140);
+          }else{
+            // Wrong
+            playTone(196.00, 160);
           }
-        } else {
-          // already full
-          playTone(196.00, 90);
+        }else{
+          playTone(196.00, 100);
         }
-      } else {
-        playTone(196.00, 90);
+      }else{
+        playTone(196.00, 100);
       }
-    } else {
-      playTone(196.00, 70);
+    }else{
+      playTone(196.00, 80);
     }
 
     ghost.remove();
-
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);
     drag = null;
   }
 
   function showMarker(exState, vbx, vby){
-    // Convert viewBox coords to px within stage
     const r = exState.stage.getBoundingClientRect();
     const px = (vbx / 760) * r.width;
-    const py = (vby / 240) * r.height;
+    const py = (vby / 280) * r.height;
 
     const m = document.createElement("div");
     m.className = "okMarker";
@@ -598,25 +653,21 @@
   }
 
   function updateChildPlayState(exState){
-    const childBtn = exState.btnChild;
     const ok =
       exState.placed.every(v => v != null) &&
       exState.placed.join("|") === exState.target.join("|");
-
-    if(ok) childBtn.classList.add("childOk");
-    else childBtn.classList.remove("childOk");
+    if(ok) exState.btnChild.classList.add("childOk");
+    else exState.btnChild.classList.remove("childOk");
   }
 
-  function getChildFreqs(exState){
-    return exState.placed
-      .filter(v => v != null)
-      .map(sol => SOL_TO_FREQ[sol]);
-  }
   function getTargetFreqs(exState){
     return exState.target.map(sol => SOL_TO_FREQ[sol]);
   }
+  function getChildFreqs(exState){
+    return exState.placed.filter(Boolean).map(sol => SOL_TO_FREQ[sol]);
+  }
 
-  // ========= Build one exercise =========
+  // ===================== BUILD EXERCISE =====================
   function makeExercise(ex){
     const wrapper = document.createElement("div");
     wrapper.className = "exercise";
@@ -624,6 +675,7 @@
     const sheet = document.createElement("div");
     sheet.className = "sheet";
 
+    // Play buttons row (no text)
     const playRow = document.createElement("div");
     playRow.className = "playRow";
 
@@ -638,24 +690,25 @@
     playRow.appendChild(btnTarget);
     playRow.appendChild(btnChild);
 
+    // Staff
     const inner = document.createElement("div");
     inner.className = "sheetInner";
 
     const stage = document.createElement("div");
     stage.className = "stage";
 
-    const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+    const svg = svgEl("svg");
     svg.setAttribute("class","staff");
-    svg.setAttribute("viewBox","0 0 760 240");
+    svg.setAttribute("viewBox","0 0 760 280");
     svg.innerHTML = `
       <g stroke="#111" stroke-width="2">
-        <line x1="40" y1="60" x2="720" y2="60" />
-        <line x1="40" y1="85" x2="720" y2="85" />
-        <line x1="40" y1="110" x2="720" y2="110" />
-        <line x1="40" y1="135" x2="720" y2="135" />
-        <line x1="40" y1="160" x2="720" y2="160" />
+        <line x1="40" y1="80" x2="720" y2="80" />
+        <line x1="40" y1="105" x2="720" y2="105" />
+        <line x1="40" y1="130" x2="720" y2="130" />
+        <line x1="40" y1="155" x2="720" y2="155" />
+        <line x1="40" y1="180" x2="720" y2="180" />
       </g>
-      <text x="54" y="130" font-size="52" fill="#111" font-weight="800">𝄞</text>
+      <text x="54" y="155" font-size="56" fill="#111" font-weight="800">𝄞</text>
       <g class="placed"></g>
     `;
     stage.appendChild(svg);
@@ -671,53 +724,69 @@
 
     inner.appendChild(stage);
 
-    // Pool (same notes as target, shuffled)
+    // Pool tokens: note symbol + name (do/re/mi...)
     const pool = document.createElement("div");
     pool.className = "pool";
+
+    // pool contains exactly the notes needed, shuffled
     const poolNotes = shuffle(ex.target.slice());
     poolNotes.forEach((sol) => {
       const token = document.createElement("div");
       token.className = "noteToken";
       token.dataset.sol = sol;
 
-      // Tap/click plays the note too
-      token.addEventListener("pointerdown", (ev) => {
-        // If it's a simple tap without dragging, user might want sound.
-        // We'll start drag on same event, but also play quick preview on double-tap.
-        // Single tap to preview (very short) can be annoying, so:
-        // Use "click" for preview (mouse) + "dblclick" (touch might not have).
-      });
+      // Note icon (stem note)
+      const icon = document.createElement("div");
+      icon.innerHTML = `
+        <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M14 3v10.4a3.6 3.6 0 1 1-2-3.2V5.2l8-2.2V13a3.6 3.6 0 1 1-2-3.2V3z" fill="#fff"/>
+        </svg>
+      `;
 
+      const name = document.createElement("div");
+      name.className = "noteName";
+      name.textContent = solDisplay(sol);
+
+      token.appendChild(icon);
+      token.appendChild(name);
+
+      // Click/tap plays ONLY the note (no click sound)
       token.addEventListener("click", () => playTone(SOL_TO_FREQ[sol], curMs()));
 
       pool.appendChild(token);
     });
 
-    // State object
+    // State
     const exState = {
       id: ex.id,
       target: ex.target.slice(),
       placed: [null, null, null],
       stage,
       svg,
+      placedG: svg.querySelector(".placed"),
       markerLayer,
       btnTarget,
       btnChild
     };
 
-    // Drag binding
+    // Bind drag for each token
     Array.from(pool.children).forEach(tok => {
       tok.addEventListener("pointerdown", (e) => startDrag(e, tok, exState));
     });
 
-    // Play buttons (always available)
+    // Play objective: 30% faster gaps (less silence)
+    const baseGap = 140;
+    const targetGap = Math.round(baseGap * 0.70);
+
     btnTarget.addEventListener("pointerdown", async () => {
       ensureAudio();
-      await playSequence(getTargetFreqs(exState), curMs(), 140);
+      await playSequence(getTargetFreqs(exState), curMs(), targetGap);
     });
+
+    // Play child: normal gap
     btnChild.addEventListener("pointerdown", async () => {
       ensureAudio();
-      await playSequence(getChildFreqs(exState), curMs(), 140);
+      await playSequence(getChildFreqs(exState), curMs(), baseGap);
       updateChildPlayState(exState);
     });
 
@@ -729,12 +798,13 @@
     return wrapper;
   }
 
-  // ========= Render exercises =========
+  // ===================== RENDER EXERCISES =====================
   (function renderExercises(){
     const list = document.getElementById("exerciseList");
     list.innerHTML = "";
     EXERCISES.forEach(ex => list.appendChild(makeExercise(ex)));
   })();
 </script>
+
 </body>
 </html>
