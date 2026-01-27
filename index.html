@@ -121,7 +121,7 @@ function tone(f,d){
   const o=ctx.createOscillator(), g=ctx.createGain();
   o.type="sine"; o.frequency.value=f;
   g.gain.setValueAtTime(.0001,ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(.35,ctx.currentTime+.03);
+  g.gain.exponentialRampToValueAtTime(.65,ctx.currentTime+.03);
   g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+(d*TEMPO)/1000);
   o.connect(g); g.connect(ctx.destination);
   o.start(); o.stop(ctx.currentTime+(d*TEMPO)/1000+.05);
