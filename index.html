@@ -81,7 +81,6 @@ svg{width:100%;height:auto;display:block}
 <body>
 <div class="wrap">
 
-<!-- IZQUIERDA: REFERENCIA -->
 <div class="panel">
   <div class="sheet">
     <div class="durRow">
@@ -104,7 +103,6 @@ svg{width:100%;height:auto;display:block}
   </div>
 </div>
 
-<!-- DERECHA: EJERCICIOS -->
 <div class="panel" id="exercises"></div>
 
 </div>
@@ -112,26 +110,30 @@ svg{width:100%;height:auto;display:block}
 <script>
 // ================= AUDIO =================
 let ctx;
-function audio(){ if(!ctx) ctx=new AudioContext(); if(ctx.state==="suspended") ctx.resume(); }
+const TEMPO = 0.66; // +50 % velocidad
+
+function audio(){
+  if(!ctx) ctx=new AudioContext();
+  if(ctx.state==="suspended") ctx.resume();
+}
 function tone(f,d){
   audio();
   const o=ctx.createOscillator(), g=ctx.createGain();
   o.type="sine"; o.frequency.value=f;
   g.gain.setValueAtTime(.0001,ctx.currentTime);
   g.gain.exponentialRampToValueAtTime(.35,ctx.currentTime+.03);
-  g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+d/1000);
+  g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+(d*TEMPO)/1000);
   o.connect(g); g.connect(ctx.destination);
-  o.start(); o.stop(ctx.currentTime+d/1000+.05);
+  o.start(); o.stop(ctx.currentTime+(d*TEMPO)/1000+.05);
 }
 const NEGRA=900, BLANCA=2600;
 let dur=NEGRA;
 
-// silencio + secuencia rápida
 async function playSeq(freqs){
-  await new Promise(r=>setTimeout(r,500));
+  await new Promise(r=>setTimeout(r,500*TEMPO));
   for(const f of freqs){
     tone(f,dur);
-    await new Promise(r=>setTimeout(r,dur+80));
+    await new Promise(r=>setTimeout(r,(dur+80)*TEMPO));
   }
 }
 
@@ -167,7 +169,7 @@ SCALE.forEach((s,i)=>{
   const g=document.createElementNS("http://www.w3.org/2000/svg","g");
   g.innerHTML=noteSVG(x,y,s==="do");
   g.style.cursor="pointer";
-  g.onclick=()=>tone(MAP[s][0],dur);
+  g.onpointerdown=()=>tone(MAP[s][0],dur);
   refN.append(g);
   refL.insertAdjacentHTML("beforeend",
     `<text x="${x-14}" y="265" font-size="16">${s==="do5"?"do":s}</text>`);
@@ -207,6 +209,8 @@ DATA.forEach(target=>{
   svg.querySelector("#refNotes")?.remove();
   svg.querySelector("#refNames")?.remove();
   const placedG=document.createElementNS("http://www.w3.org/2000/svg","g");
+  const bandG=document.createElementNS("http://www.w3.org/2000/svg","g");
+  svg.append(bandG);
   svg.append(placedG);
   sheet.append(stage);
 
@@ -220,8 +224,6 @@ DATA.forEach(target=>{
     const t=document.createElement("div");
     t.className="token";
     t.innerHTML=`♪<div class="name">${n==="do5"?"do":n}</div>`;
-    t.onclick=()=>tone(MAP[n][0],dur);
-
     t.onpointerdown=e=>{
       if(t.classList.contains("locked")) return;
       const rect=t.getBoundingClientRect();
@@ -235,19 +237,34 @@ DATA.forEach(target=>{
       const move=ev=>{
         ghost.style.left=ev.clientX-rect.width/2+"px";
         ghost.style.top=ev.clientY-rect.height/2+"px";
+
+        bandG.innerHTML="";
+        const r=stage.getBoundingClientRect();
+        if(ev.clientY>r.top && ev.clientY<r.bottom){
+          const rel=(ev.clientY-r.top)/r.height*280;
+          let best=null,d=1e9;
+          for(const k in MAP){
+            const dy=Math.abs(MAP[k][1]-rel);
+            if(dy<d){d=dy;best=k}
+          }
+          const y=MAP[best][1];
+          bandG.innerHTML=`<rect x="40" y="${y-9}" width="680" height="18" rx="6" fill="${getComputedStyle(document.documentElement).getPropertyValue('--yellow')}"/>`;
+        }
       };
+
       const up=ev=>{
         document.removeEventListener("pointermove",move);
         document.removeEventListener("pointerup",up);
+        bandG.innerHTML="";
         ghost.remove();
 
         const r=stage.getBoundingClientRect();
         if(ev.clientX>r.left && ev.clientX<r.right &&
            ev.clientY>r.top && ev.clientY<r.bottom){
-          const relY=(ev.clientY-r.top)/r.height*280;
+          const rel=(ev.clientY-r.top)/r.height*280;
           let best=null,d=1e9;
           for(const k in MAP){
-            const dy=Math.abs(MAP[k][1]-relY);
+            const dy=Math.abs(MAP[k][1]-rel);
             if(dy<d){d=dy;best=k}
           }
           const idx=placed.indexOf(null);
