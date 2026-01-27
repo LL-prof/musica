@@ -3,21 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Partituras (arrastrar notas)</title>
+  <title>Music Drag</title>
   <style>
     :root{
       --bg:#10131a;
-      --panel:#0f1218;
       --sheet:#ffffff;
       --ink:#0c0f14;
-      --ok:#25c26e;
       --shadow: 0 14px 36px rgba(0,0,0,.35);
       --radius:18px;
       --gap:14px;
-      --staff:#111;
-      --staff2:#1a1f2a;
-      --note:#111;
-      --noteText:#fff;
+      --ok:#25c26e;
+      --yellow: rgba(180, 140, 0, 0.38);
+      --yellowStroke: rgba(130, 95, 0, 0.55);
+      --btnBorder: rgba(0,0,0,.18);
+      --btnShadow: 0 10px 22px rgba(0,0,0,.14);
     }
     *{box-sizing:border-box}
     body{
@@ -27,7 +26,6 @@
       height:100vh;
       overflow:hidden;
     }
-
     .wrap{
       height:100vh;
       display:grid;
@@ -35,7 +33,6 @@
       gap: var(--gap);
       padding: 14px;
     }
-
     .panel{
       background: rgba(255,255,255,.05);
       border: 1px solid rgba(255,255,255,.10);
@@ -46,14 +43,13 @@
       display:flex;
       flex-direction:column;
     }
-
     .content{
       padding: 12px;
       overflow:auto;
       min-height:0;
     }
 
-    /* White "sheet" for each staff */
+    /* White sheet */
     .sheet{
       background: var(--sheet);
       border-radius: 16px;
@@ -62,101 +58,121 @@
       overflow:hidden;
       position:relative;
     }
-
     .sheetInner{
       padding: 10px 10px 12px 10px;
       position:relative;
     }
 
-    /* Reference sheet */
-    .refTop{
-      display:flex;
-      justify-content:flex-end;
-      gap:10px;
-      padding: 10px 10px 0 10px;
+    /* Big duration buttons (only allowed text) */
+    .durRow{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 12px;
     }
     .durBtn{
-      width:34px; height:34px;
-      border-radius: 999px;
-      border: 2px solid rgba(0,0,0,.18);
+      height: 64px;
+      border-radius: 16px;
+      border: 2px solid var(--btnBorder);
       background: #fff;
+      box-shadow: var(--btnShadow);
       cursor:pointer;
-      display:grid;
-      place-items:center;
       user-select:none;
-    }
-    .durBtn .dot{
-      width:14px; height:14px;
-      border-radius:999px;
-      background:#000;
-      opacity:.25;
+      font-weight: 900;
+      letter-spacing: .8px;
+      font-size: 18px;
+      color: #111;
+      display:flex;
+      align-items:center;
+      justify-content:center;
     }
     .durBtn.active{
-      border-color: rgba(0,0,0,.5);
-      box-shadow: 0 0 0 3px rgba(37,194,110,.22);
-    }
-    .durBtn.active .dot{ opacity:1; }
-    .durBtn.white .dot{
-      background:#fff;
-      border:2px solid #000;
-      width:12px; height:12px;
-    }
-
-    /* Exercise cards */
-    .exercise{
-      margin-bottom: 12px;
+      border-color: rgba(0,0,0,.55);
+      box-shadow: 0 0 0 5px rgba(37,194,110,.18), var(--btnShadow);
     }
 
     .stage{
       position:relative;
       width:100%;
-      max-width: 620px;
+      max-width: 680px;
       margin: 0 auto;
     }
-
     svg.staff{
       width:100%;
       height:auto;
       display:block;
     }
 
-    /* Pool of notes (no text outside, only on the notes themselves: do/re/mi...) */
+    /* Exercises list */
+    .exercise{
+      margin-bottom: 12px;
+    }
+
+    /* Exercise controls: two play buttons, no text */
+    .playRow{
+      display:flex;
+      gap: 12px;
+      justify-content:center;
+      padding: 12px 12px 0 12px;
+    }
+    .playBtn{
+      width: 74px;
+      height: 54px;
+      border-radius: 16px;
+      border: 2px solid var(--btnBorder);
+      background: #fff;
+      box-shadow: var(--btnShadow);
+      cursor:pointer;
+      display:grid;
+      place-items:center;
+      user-select:none;
+    }
+    .playBtn svg{ display:block; }
+    .playBtn.childOk{
+      border-color: rgba(37,194,110,.75);
+      box-shadow: 0 0 0 5px rgba(37,194,110,.20), var(--btnShadow);
+    }
+
+    /* Pool of draggable notes (no labels) */
     .pool{
       display:flex;
       gap:10px;
       flex-wrap:wrap;
-      padding: 10px 10px 12px 10px;
+      padding: 12px;
       justify-content:center;
     }
-
     .noteToken{
-      width:54px; height:54px;
+      width:56px; height:56px;
       border-radius: 999px;
-      background: var(--note);
-      color: var(--noteText);
+      background: #111;
+      color: #fff;
       display:flex;
       align-items:center;
       justify-content:center;
       font-weight:900;
-      letter-spacing:.2px;
       user-select:none;
       touch-action:none;
       cursor:grab;
       box-shadow: 0 10px 22px rgba(0,0,0,.18);
       border: 2px solid rgba(255,255,255,.12);
     }
+    .noteToken::before{
+      content:"♪";
+      font-size:22px;
+      opacity:.95;
+    }
     .noteToken:active{ cursor:grabbing; transform: translateY(1px); }
-
     .noteToken.locked{
-      opacity:.35;
+      opacity:.28;
       cursor:default;
       filter: grayscale(.2);
+      transform:none;
     }
 
-    /* Green marker appears ONLY after correct placement (no visible drop box before) */
+    /* Green marker appears only after correct placement */
     .okMarker{
       position:absolute;
-      width:38px; height:38px;
+      width:40px; height:40px;
       border-radius: 12px;
       background: rgba(37,194,110,.18);
       border: 2px solid rgba(37,194,110,.65);
@@ -165,7 +181,6 @@
       transform: translate(-50%, -50%);
     }
 
-    /* Responsive */
     @media (max-width: 980px){
       body{ overflow:auto; }
       .wrap{ grid-template-columns: 1fr; height:auto; overflow:auto; }
@@ -176,43 +191,29 @@
 
 <div class="wrap">
 
-  <!-- LEFT: Exercises -->
-  <section class="panel">
-    <div class="content" id="exerciseList"></div>
-  </section>
-
-  <!-- RIGHT: Reference -->
+  <!-- LEFT: Reference -->
   <section class="panel">
     <div class="content">
       <div class="sheet">
-        <div class="refTop">
-          <!-- ⚫ negra (corto) -->
-          <div class="durBtn black active" id="durShort" aria-label="Corto">
-            <div class="dot"></div>
-          </div>
-          <!-- ⚪ blanca (largo) -->
-          <div class="durBtn white" id="durLong" aria-label="Largo">
-            <div class="dot"></div>
-          </div>
+        <div class="durRow">
+          <button class="durBtn active" id="btnNegra">NEGRA</button>
+          <button class="durBtn" id="btnBlanca">BLANCA</button>
         </div>
-
         <div class="sheetInner">
           <div class="stage">
-            <svg class="staff" id="refSvg" viewBox="0 0 620 240" role="img" aria-label="Referencia">
+            <svg class="staff" id="refSvg" viewBox="0 0 760 240" role="img" aria-label="Referencia">
               <!-- pentagrama -->
               <g stroke="#111" stroke-width="2">
-                <line x1="40" y1="60" x2="580" y2="60" />
-                <line x1="40" y1="85" x2="580" y2="85" />
-                <line x1="40" y1="110" x2="580" y2="110" />
-                <line x1="40" y1="135" x2="580" y2="135" />
-                <line x1="40" y1="160" x2="580" y2="160" />
+                <line x1="40" y1="60" x2="720" y2="60" />
+                <line x1="40" y1="85" x2="720" y2="85" />
+                <line x1="40" y1="110" x2="720" y2="110" />
+                <line x1="40" y1="135" x2="720" y2="135" />
+                <line x1="40" y1="160" x2="720" y2="160" />
               </g>
+              <text x="54" y="130" font-size="52" fill="#111" font-weight="800">𝄞</text>
 
-              <!-- clave (simple decorativa, no perfecta) -->
-              <text x="50" y="130" font-size="52" fill="#111" font-weight="800">𝄞</text>
-
+              <g id="refHighlight"></g>
               <g id="refNotes"></g>
-              <g id="refLabels" fill="#111" font-size="14" font-weight="900"></g>
             </svg>
           </div>
         </div>
@@ -220,10 +221,15 @@
     </div>
   </section>
 
+  <!-- RIGHT: Exercises -->
+  <section class="panel">
+    <div class="content" id="exerciseList"></div>
+  </section>
+
 </div>
 
 <script>
-  // ========= AUDIO (nativo, offline) =========
+  // ========= AUDIO (offline) =========
   let audioCtx = null;
   function ensureAudio(){
     if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -248,71 +254,69 @@
       o.stop(now + ms/1000 + 0.03);
     }catch(e){}
   }
+  function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+  async function playSequence(freqs, noteMs, gapMs){
+    for(const f of freqs){
+      playTone(f, noteMs);
+      await sleep(noteMs + gapMs);
+    }
+  }
 
-  // ========= SOLFEO (do re mi...) =========
-  // Rango: do4 -> do5
-  const SCALE = [
-    {sol:"do", pitch:"C4", freq:261.63, y:160},
-    {sol:"re", pitch:"D4", freq:293.66, y:147.5},
-    {sol:"mi", pitch:"E4", freq:329.63, y:135},
-    {sol:"fa", pitch:"F4", freq:349.23, y:122.5},
-    {sol:"sol",pitch:"G4", freq:392.00, y:110},
-    {sol:"la", pitch:"A4", freq:440.00, y:97.5},
-    {sol:"si", pitch:"B4", freq:493.88, y:85},
-    {sol:"do", pitch:"C5", freq:523.25, y:72.5}
+  // ========= SOLFEO MAP =========
+  // do4 -> do5 (internally: do5 for the top do)
+  const SOL_TO_FREQ = {
+    do: 261.63,
+    re: 293.66,
+    mi: 329.63,
+    fa: 349.23,
+    sol:392.00,
+    la: 440.00,
+    si: 493.88,
+    do5:523.25
+  };
+  const SOL_TO_Y = {
+    do: 160,
+    re: 147.5,
+    mi: 135,
+    fa: 122.5,
+    sol:110,
+    la: 97.5,
+    si: 85,
+    do5:72.5
+  };
+  const BANDS = [
+    {sol:"do",  y:160},
+    {sol:"re",  y:147.5},
+    {sol:"mi",  y:135},
+    {sol:"fa",  y:122.5},
+    {sol:"sol", y:110},
+    {sol:"la",  y:97.5},
+    {sol:"si",  y:85},
+    {sol:"do5", y:72.5}
   ];
 
-  const SOL_TO_FREQ = {
-    "do": 261.63,
-    "re": 293.66,
-    "mi": 329.63,
-    "fa": 349.23,
-    "sol":392.00,
-    "la": 440.00,
-    "si": 493.88,
-    "do5":523.25
-  };
+  // ========= DURATIONS (doubled) =========
+  let mode = "negra";
+  const NEGRA_MS = 640;   // doubled
+  const BLANCA_MS = 2200; // doubled
+  function curMs(){ return mode === "negra" ? NEGRA_MS : BLANCA_MS; }
 
-  // Para ejercicios usamos solfeo con registro simple:
-  // do re mi fa sol la si do (último do se llamará "do5" internamente para sonar arriba)
-  const SOL_TO_Y = {
-    "do": 160,
-    "re": 147.5,
-    "mi": 135,
-    "fa": 122.5,
-    "sol":110,
-    "la": 97.5,
-    "si": 85,
-    "do5":72.5
-  };
-
-  // ========= DURACIÓN (⚫/⚪) =========
-  let durationMode = "short"; // short = negra, long = blanca
-  const shortMs = 320;
-  const longMs  = 1100;
-
-  const durShort = document.getElementById("durShort");
-  const durLong  = document.getElementById("durLong");
-
-  durShort.addEventListener("pointerdown", () => {
+  const btnNegra = document.getElementById("btnNegra");
+  const btnBlanca = document.getElementById("btnBlanca");
+  btnNegra.addEventListener("pointerdown", () => {
     ensureAudio();
-    durationMode = "short";
-    durShort.classList.add("active");
-    durLong.classList.remove("active");
-    playTone(440, 90);
+    mode = "negra";
+    btnNegra.classList.add("active");
+    btnBlanca.classList.remove("active");
+    playTone(440, 120);
   });
-
-  durLong.addEventListener("pointerdown", () => {
+  btnBlanca.addEventListener("pointerdown", () => {
     ensureAudio();
-    durationMode = "long";
-    durLong.classList.add("active");
-    durShort.classList.remove("active");
-    playTone(440, 90);
+    mode = "blanca";
+    btnBlanca.classList.add("active");
+    btnNegra.classList.remove("active");
+    playTone(440, 120);
   });
-
-  function getMs(){
-    return durationMode === "short" ? shortMs : longMs;
-  }
 
   // ========= SVG NOTE =========
   function svgNote(x, y, clickable, onClick){
@@ -341,152 +345,110 @@
     return g;
   }
 
-  // ========= RIGHT: referencia (clicable) =========
+  // ========= LEFT: Reference scale (no labels) =========
+  const refSvg = document.getElementById("refSvg");
+  const refNotesG = document.getElementById("refNotes");
   (function renderReference(){
-    const notesG = document.getElementById("refNotes");
-    const labelsG = document.getElementById("refLabels");
-    const startX = 160;
-    const stepX  = 55;
-
-    SCALE.forEach((n, i) => {
+    const scale = ["do","re","mi","fa","sol","la","si","do5"];
+    const startX = 190;
+    const stepX  = 70;
+    scale.forEach((sol, i) => {
       const x = startX + stepX*i;
-      const y = n.y;
-      notesG.appendChild(svgNote(x, y, true, () => playTone(n.freq, getMs())));
-
-      const t = document.createElementNS("http://www.w3.org/2000/svg","text");
-      t.setAttribute("x", x - 14);
-      t.setAttribute("y", 210);
-      t.textContent = n.sol; // do re mi...
-      labelsG.appendChild(t);
+      const y = SOL_TO_Y[sol];
+      refNotesG.appendChild(svgNote(x, y, true, () => playTone(SOL_TO_FREQ[sol], curMs())));
     });
   })();
 
-  // ========= LEFT: ejercicios (suave -> más difícil) =========
-  // Empieza muy fácil: 3 do, luego 3 mi, etc. (sin texto visible)
+  // ========= EXERCISES (soft -> harder) =========
   const EXERCISES = [
-    { id:"ex1", slots:["do","do","do"], pool:["do","do","do"] },
-    { id:"ex2", slots:["mi","mi","mi"], pool:["mi","mi","mi"] },
-    { id:"ex3", slots:["re","re","re"], pool:["re","re","re"] },
-    { id:"ex4", slots:["do","mi","do"], pool:["do","mi","do"] },
-    { id:"ex5", slots:["do","re","mi"], pool:["do","re","mi"] },
-    { id:"ex6", slots:["mi","re","do"], pool:["mi","re","do"] },
-    { id:"ex7", slots:["fa","fa","mi"], pool:["fa","fa","mi"] },
-    { id:"ex8", slots:["sol","mi","re"], pool:["sol","mi","re"] },
-    { id:"ex9", slots:["la","sol","fa"], pool:["la","sol","fa"] },
-    { id:"ex10",slots:["si","la","sol"], pool:["si","la","sol"] },
-    { id:"ex11",slots:["do5","si","la"], pool:["do5","si","la"] },
-    { id:"ex12",slots:["do","sol","do5"], pool:["do","sol","do5"] }
+    { id:"ex1",  target:["do","do","do"] },
+    { id:"ex2",  target:["mi","mi","mi"] },
+    { id:"ex3",  target:["re","re","re"] },
+    { id:"ex4",  target:["do","mi","do"] },
+    { id:"ex5",  target:["do","re","mi"] },
+    { id:"ex6",  target:["mi","re","do"] },
+    { id:"ex7",  target:["fa","fa","mi"] },
+    { id:"ex8",  target:["sol","mi","re"] },
+    { id:"ex9",  target:["la","sol","fa"] },
+    { id:"ex10", target:["si","la","sol"] },
+    { id:"ex11", target:["do5","si","la"] },
+    { id:"ex12", target:["do","sol","do5"] }
   ];
-
   function shuffle(a){
     return a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(p=>p[1]);
   }
 
-  function makeExercise(ex){
-    const wrap = document.createElement("div");
-    wrap.className = "exercise sheet";
-
-    const inner = document.createElement("div");
-    inner.className = "sheetInner";
-
-    const stage = document.createElement("div");
-    stage.className = "stage";
-    stage.dataset.exercise = ex.id;
-
-    // staff svg
-    const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
-    svg.setAttribute("class","staff");
-    svg.setAttribute("viewBox","0 0 620 240");
-    svg.innerHTML = `
-      <g stroke="#111" stroke-width="2">
-        <line x1="40" y1="60" x2="580" y2="60" />
-        <line x1="40" y1="85" x2="580" y2="85" />
-        <line x1="40" y1="110" x2="580" y2="110" />
-        <line x1="40" y1="135" x2="580" y2="135" />
-        <line x1="40" y1="160" x2="580" y2="160" />
-      </g>
-      <text x="50" y="130" font-size="52" fill="#111" font-weight="800">𝄞</text>
-      <g class="placed"></g>
+  function playIcon(){
+    return `
+      <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M8 5v14l12-7z" fill="#111"></path>
+      </svg>
     `;
-    stage.appendChild(svg);
-
-    // Hidden targets (no visible boxes)
-    // We still need fixed x positions for the 3 notes:
-    const slotX = [270, 360, 450];
-
-    // Markers container (only appears after success)
-    const markerLayer = document.createElement("div");
-    markerLayer.style.position="absolute";
-    markerLayer.style.left="0";
-    markerLayer.style.top="0";
-    markerLayer.style.right="0";
-    markerLayer.style.bottom="0";
-    markerLayer.style.pointerEvents="none";
-    stage.appendChild(markerLayer);
-
-    // Store targets in dataset for hit test in px
-    const targets = ex.slots.map((sol, idx) => ({
-      idx,
-      sol,
-      vbx: slotX[idx],
-      vby: SOL_TO_Y[sol],
-      done:false
-    }));
-    stage._targets = targets;
-    stage._markers = markerLayer;
-    stage._svg = svg;
-
-    inner.appendChild(stage);
-
-    // pool
-    const pool = document.createElement("div");
-    pool.className = "pool";
-
-    const poolNotes = shuffle(ex.pool.slice());
-    poolNotes.forEach((sol, i) => {
-      const token = document.createElement("div");
-      token.className = "noteToken";
-      token.textContent = sol === "do5" ? "do" : sol; // visual: do (aunque suene alto)
-      token.dataset.sol = sol;
-      token.dataset.homeIndex = String(i);
-
-      // pointer-drag (touch friendly)
-      token.addEventListener("pointerdown", (e) => startDrag(e, token, stage));
-      // tap to hear
-      token.addEventListener("dblclick", () => playTone(SOL_TO_FREQ[sol], getMs()));
-
-      pool.appendChild(token);
-    });
-
-    wrap.appendChild(inner);
-    wrap.appendChild(pool);
-
-    // After added to DOM we can record "home" positions per note
-    requestAnimationFrame(() => {
-      Array.from(pool.children).forEach(tok => {
-        const r = tok.getBoundingClientRect();
-        tok.dataset.homeX = r.left;
-        tok.dataset.homeY = r.top;
-      });
-    });
-
-    return wrap;
   }
 
-  // -------- Drag logic: try -> snap if correct, else return ----------
+  // Slots (in viewBox coords) for placing notes left->right
+  const SLOT_X = [300, 400, 500];
+
+  // ========= BAND HIGHLIGHT (yellow, inside pentagram only) =========
+  // We highlight a "lane" around the nearest band y, clipped to staff bounds (x:40..720, y:60..160).
+  function setBandHighlight(svg, yCenter){
+    const NS = "http://www.w3.org/2000/svg";
+    let g = svg._hlG;
+    if(!g){
+      g = svg.querySelector(".bandLayer");
+      if(!g){
+        g = document.createElementNS(NS, "g");
+        g.setAttribute("class", "bandLayer");
+        // Insert above staff lines but below placed notes
+        svg.insertBefore(g, svg.querySelector(".placed") || svg.firstChild);
+      }
+      svg._hlG = g;
+    }
+    g.innerHTML = "";
+    if(yCenter == null) return;
+
+    // Lane height ~ space between bands
+    const laneH = 18; // forgiving, but not huge
+    const y = yCenter - laneH/2;
+
+    // Clip inside staff area
+    const staffTop = 60, staffBot = 160;
+    const yy = Math.max(staffTop, Math.min(y, staffBot - laneH));
+
+    const rect = document.createElementNS(NS, "rect");
+    rect.setAttribute("x", "40");
+    rect.setAttribute("y", String(yy));
+    rect.setAttribute("width", "680"); // 720-40
+    rect.setAttribute("height", String(laneH));
+    rect.setAttribute("rx", "6");
+    rect.setAttribute("fill", "var(--yellow)");
+    rect.setAttribute("stroke", "var(--yellowStroke)");
+    rect.setAttribute("stroke-width", "1.2");
+    g.appendChild(rect);
+  }
+
+  function nearestBandFromViewBoxY(vby){
+    let best = null, bestD = Infinity;
+    for(const b of BANDS){
+      const d = Math.abs(b.y - vby);
+      if(d < bestD){ bestD = d; best = b; }
+    }
+    // Tolerance by height in viewBox coords
+    return (bestD <= 14) ? best : null;
+  }
+
+  // ========= DRAG ENGINE (touch-friendly) =========
   let drag = null;
 
-  function startDrag(e, token, stage){
+  function startDrag(e, token, exState){
     if(token.classList.contains("locked")) return;
     ensureAudio();
-
     token.setPointerCapture(e.pointerId);
 
     const rect = token.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
     const offsetY = e.clientY - rect.top;
 
-    // Create a floating clone so the pool layout doesn't jump
     const ghost = token.cloneNode(true);
     ghost.style.position = "fixed";
     ghost.style.left = rect.left + "px";
@@ -498,19 +460,10 @@
     ghost.style.transform = "none";
     document.body.appendChild(ghost);
 
-    drag = {
-      token,
-      ghost,
-      stage,
-      pointerId: e.pointerId,
-      offsetX,
-      offsetY,
-      startX: rect.left,
-      startY: rect.top
-    };
+    drag = { token, ghost, exState, pointerId: e.pointerId, offsetX, offsetY };
 
-    // small sound feedback on pick-up
-    playTone(440, 60);
+    // Optional: quick feedback sound on pick
+    playTone(440, 90);
 
     window.addEventListener("pointermove", onMove, {passive:false});
     window.addEventListener("pointerup", onUp, {passive:false});
@@ -519,17 +472,53 @@
   function onMove(e){
     if(!drag || e.pointerId !== drag.pointerId) return;
     e.preventDefault();
+
     drag.ghost.style.left = (e.clientX - drag.offsetX) + "px";
     drag.ghost.style.top  = (e.clientY - drag.offsetY) + "px";
+
+    // Update yellow band highlight inside THIS exercise staff
+    const { exState } = drag;
+    updateExerciseBandHighlight(exState, e.clientX, e.clientY);
+  }
+
+  function updateExerciseBandHighlight(exState, clientX, clientY){
+    const { stage, svg } = exState;
+    const r = stage.getBoundingClientRect();
+    const inside =
+      clientX >= r.left && clientX <= r.right &&
+      clientY >= r.top  && clientY <= r.bottom;
+
+    if(!inside){
+      setBandHighlight(svg, null);
+      exState._hoverBand = null;
+      return;
+    }
+
+    // Convert clientY to viewBox Y
+    const vbH = 240;
+    const relY = (clientY - r.top) / r.height;
+    const vby = relY * vbH;
+
+    const band = nearestBandFromViewBoxY(vby);
+    if(!band){
+      setBandHighlight(svg, null);
+      exState._hoverBand = null;
+      return;
+    }
+    setBandHighlight(svg, band.y);
+    exState._hoverBand = band.sol;
   }
 
   function onUp(e){
     if(!drag || e.pointerId !== drag.pointerId) return;
     e.preventDefault();
 
-    const { token, ghost, stage } = drag;
+    const { token, ghost, exState } = drag;
+    const { stage, svg, target, placed } = exState;
 
-    // Check drop inside stage area
+    // Clear highlight
+    setBandHighlight(svg, null);
+
     const stageRect = stage.getBoundingClientRect();
     const ghostRect = ghost.getBoundingClientRect();
     const dropX = ghostRect.left + ghostRect.width/2;
@@ -539,41 +528,55 @@
       dropX >= stageRect.left && dropX <= stageRect.right &&
       dropY >= stageRect.top  && dropY <= stageRect.bottom;
 
+    let accepted = false;
+
     if(inside){
-      // Find nearest target slot (in px)
-      const t = nearestTarget(stage, dropX, dropY);
-      if(t && !t.done){
+      // Determine band by dropY
+      const relY = (dropY - stageRect.top) / stageRect.height;
+      const vby = relY * 240;
+      const band = nearestBandFromViewBoxY(vby);
+
+      if(band){
         const solDragged = token.dataset.sol;
-        if(solDragged === t.sol){
-          // Correct: snap + draw note + show green marker
-          t.done = true;
+        const nextIndex = placed.findIndex(x => x == null);
 
-          // Place note in SVG at target viewBox coords
-          const placed = stage._svg.querySelector(".placed");
-          placed.appendChild(svgNote(t.vbx, t.vby, false));
+        if(nextIndex !== -1){
+          const expected = target[nextIndex];
 
-          // Show green marker at correct position (px coordinates)
-          showMarker(stage, t);
+          // Must match: the band (where they dropped) + the dragged note + the expected target at that slot
+          if(solDragged === band.sol && solDragged === expected){
+            // Place note neatly at slot position
+            const x = SLOT_X[nextIndex];
+            const y = SOL_TO_Y[solDragged];
 
-          // Lock the token (original stays in pool but becomes disabled)
-          token.classList.add("locked");
+            exState.placed[nextIndex] = solDragged;
 
-          // Success sound
-          playTone(SOL_TO_FREQ[solDragged], getMs());
-        }else{
-          // Wrong
-          playTone(196.00, 120);
+            // Draw note in SVG
+            const placedG = svg.querySelector(".placed");
+            placedG.appendChild(svgNote(x, y, false));
+
+            // Green marker at that position
+            showMarker(exState, x, y);
+
+            token.classList.add("locked");
+            playTone(SOL_TO_FREQ[solDragged], curMs());
+
+            accepted = true;
+            updateChildPlayState(exState);
+          } else {
+            playTone(196.00, 140);
+          }
+        } else {
+          // already full
+          playTone(196.00, 90);
         }
-      }else{
-        // No valid target nearby
-        playTone(196.00, 80);
+      } else {
+        playTone(196.00, 90);
       }
-    }else{
-      // Dropped outside
-      playTone(196.00, 60);
+    } else {
+      playTone(196.00, 70);
     }
 
-    // Remove ghost (token stays in pool; if correct it becomes locked)
     ghost.remove();
 
     window.removeEventListener("pointermove", onMove);
@@ -581,47 +584,149 @@
     drag = null;
   }
 
-  function nearestTarget(stage, px, py){
-    const stageRect = stage.getBoundingClientRect();
-    const sx = stageRect.width / 620;
-    const sy = stageRect.height / 240;
-
-    let best = null;
-    let bestD = Infinity;
-
-    for(const t of stage._targets){
-      const tx = stageRect.left + (t.vbx * sx);
-      const ty = stageRect.top  + (t.vby * sy);
-
-      const dx = tx - px;
-      const dy = ty - py;
-      const d = Math.hypot(dx, dy);
-
-      // Threshold: needs to be "close enough" to count as trying that slot
-      if(d < bestD){
-        bestD = d;
-        best = t;
-      }
-    }
-
-    // Must be within threshold to "count"
-    return (bestD <= 55) ? best : null;
-  }
-
-  function showMarker(stage, t){
-    const stageRect = stage.getBoundingClientRect();
-    const sx = stageRect.width / 620;
-    const sy = stageRect.height / 240;
-
-    const tx = (t.vbx * sx);
-    const ty = (t.vby * sy);
+  function showMarker(exState, vbx, vby){
+    // Convert viewBox coords to px within stage
+    const r = exState.stage.getBoundingClientRect();
+    const px = (vbx / 760) * r.width;
+    const py = (vby / 240) * r.height;
 
     const m = document.createElement("div");
     m.className = "okMarker";
-    m.style.left = tx + "px";
-    m.style.top  = ty + "px";
+    m.style.left = px + "px";
+    m.style.top  = py + "px";
+    exState.markerLayer.appendChild(m);
+  }
 
-    stage._markers.appendChild(m);
+  function updateChildPlayState(exState){
+    const childBtn = exState.btnChild;
+    const ok =
+      exState.placed.every(v => v != null) &&
+      exState.placed.join("|") === exState.target.join("|");
+
+    if(ok) childBtn.classList.add("childOk");
+    else childBtn.classList.remove("childOk");
+  }
+
+  function getChildFreqs(exState){
+    return exState.placed
+      .filter(v => v != null)
+      .map(sol => SOL_TO_FREQ[sol]);
+  }
+  function getTargetFreqs(exState){
+    return exState.target.map(sol => SOL_TO_FREQ[sol]);
+  }
+
+  // ========= Build one exercise =========
+  function makeExercise(ex){
+    const wrapper = document.createElement("div");
+    wrapper.className = "exercise";
+
+    const sheet = document.createElement("div");
+    sheet.className = "sheet";
+
+    const playRow = document.createElement("div");
+    playRow.className = "playRow";
+
+    const btnTarget = document.createElement("button");
+    btnTarget.className = "playBtn";
+    btnTarget.innerHTML = playIcon();
+
+    const btnChild = document.createElement("button");
+    btnChild.className = "playBtn";
+    btnChild.innerHTML = playIcon();
+
+    playRow.appendChild(btnTarget);
+    playRow.appendChild(btnChild);
+
+    const inner = document.createElement("div");
+    inner.className = "sheetInner";
+
+    const stage = document.createElement("div");
+    stage.className = "stage";
+
+    const svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
+    svg.setAttribute("class","staff");
+    svg.setAttribute("viewBox","0 0 760 240");
+    svg.innerHTML = `
+      <g stroke="#111" stroke-width="2">
+        <line x1="40" y1="60" x2="720" y2="60" />
+        <line x1="40" y1="85" x2="720" y2="85" />
+        <line x1="40" y1="110" x2="720" y2="110" />
+        <line x1="40" y1="135" x2="720" y2="135" />
+        <line x1="40" y1="160" x2="720" y2="160" />
+      </g>
+      <text x="54" y="130" font-size="52" fill="#111" font-weight="800">𝄞</text>
+      <g class="placed"></g>
+    `;
+    stage.appendChild(svg);
+
+    const markerLayer = document.createElement("div");
+    markerLayer.style.position="absolute";
+    markerLayer.style.left="0";
+    markerLayer.style.top="0";
+    markerLayer.style.right="0";
+    markerLayer.style.bottom="0";
+    markerLayer.style.pointerEvents="none";
+    stage.appendChild(markerLayer);
+
+    inner.appendChild(stage);
+
+    // Pool (same notes as target, shuffled)
+    const pool = document.createElement("div");
+    pool.className = "pool";
+    const poolNotes = shuffle(ex.target.slice());
+    poolNotes.forEach((sol) => {
+      const token = document.createElement("div");
+      token.className = "noteToken";
+      token.dataset.sol = sol;
+
+      // Tap/click plays the note too
+      token.addEventListener("pointerdown", (ev) => {
+        // If it's a simple tap without dragging, user might want sound.
+        // We'll start drag on same event, but also play quick preview on double-tap.
+        // Single tap to preview (very short) can be annoying, so:
+        // Use "click" for preview (mouse) + "dblclick" (touch might not have).
+      });
+
+      token.addEventListener("click", () => playTone(SOL_TO_FREQ[sol], curMs()));
+
+      pool.appendChild(token);
+    });
+
+    // State object
+    const exState = {
+      id: ex.id,
+      target: ex.target.slice(),
+      placed: [null, null, null],
+      stage,
+      svg,
+      markerLayer,
+      btnTarget,
+      btnChild
+    };
+
+    // Drag binding
+    Array.from(pool.children).forEach(tok => {
+      tok.addEventListener("pointerdown", (e) => startDrag(e, tok, exState));
+    });
+
+    // Play buttons (always available)
+    btnTarget.addEventListener("pointerdown", async () => {
+      ensureAudio();
+      await playSequence(getTargetFreqs(exState), curMs(), 140);
+    });
+    btnChild.addEventListener("pointerdown", async () => {
+      ensureAudio();
+      await playSequence(getChildFreqs(exState), curMs(), 140);
+      updateChildPlayState(exState);
+    });
+
+    sheet.appendChild(playRow);
+    sheet.appendChild(inner);
+    sheet.appendChild(pool);
+    wrapper.appendChild(sheet);
+
+    return wrapper;
   }
 
   // ========= Render exercises =========
