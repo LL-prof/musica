@@ -126,17 +126,25 @@ function tone(f,d){
   o.connect(g); g.connect(ctx.destination);
   o.start(); o.stop(ctx.currentTime+(d*TEMPO)/1000+.05);
 }
-const NEGRA=900, BLANCA=2600;
-let dur=NEGRA;
+const NEGRA = 900;
+const BLANCA = 2600;
+let dur = NEGRA;
+
+// duración fija SOLO para los reproductores (rápida)
+const PLAYER_DUR = 650;
 
 async function playSeq(freqs){
-  await new Promise(r=>setTimeout(r,500*TEMPO));
+  // silencio inicial
+  await new Promise(r => setTimeout(r, 500 * TEMPO));
+
   for(const f of freqs){
-    tone(f,dur);
-    await new Promise(r=>setTimeout(r,(dur+80)*TEMPO));
+    // el reproductor usa PLAYER_DUR, NO dur
+    tone(f, PLAYER_DUR);
+
+    // pausa también basada en PLAYER_DUR
+    await new Promise(r => setTimeout(r, (PLAYER_DUR + 80) * TEMPO));
   }
 }
-
 // ================= MAPEO =================
 const MAP={
   do:[261.63,205],
