@@ -10,10 +10,10 @@
   --bg:#10131a;
   --sheet:#ffffff;
   --shadow:0 14px 36px rgba(0,0,0,.35);
-  --radius:18px;
-  --ok:#25c26e;
   --yellow:rgba(180,140,0,.35);
+  --ok:#25c26e;
 }
+
 *{box-sizing:border-box}
 body{
   margin:0;
@@ -43,13 +43,15 @@ body{
 .stage{position:relative}
 svg{width:100%;height:auto;display:block}
 
-/* botones */
+/* botones duración */
 .durRow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px}
 .durBtn{
   height:60px;border-radius:16px;border:2px solid #aaa;
   background:#fff;font-weight:900;cursor:pointer
 }
 .durBtn.active{box-shadow:0 0 0 4px rgba(37,194,110,.25)}
+
+/* reproductores */
 .playRow{display:flex;justify-content:center;gap:12px;margin-bottom:6px}
 .playBtn{
   width:60px;height:46px;border-radius:14px;border:2px solid #aaa;
@@ -57,23 +59,43 @@ svg{width:100%;height:auto;display:block}
 }
 .playBtn:hover{background:#eaeaea}
 .playBtn:active{background:#d0d0d0}
-.playBtn.ok{box-shadow:0 0 0 4px rgba(37,194,110,.3)}
+
+/* play del niño: rojo al inicio, verde al acertar */
+.playBtn.child{
+  border-color:#c0392b;
+  background:#ffecec;
+}
+.playBtn.child:hover{background:#ffdede}
+.playBtn.child:active{background:#f7cfcf}
+.playBtn.child.ok{
+  border-color: var(--ok);
+  background:#eafff1;
+}
+.playBtn.child.ok:hover{background:#dbffea}
+.playBtn.child.ok:active{background:#c9f6dd}
 
 /* pool */
-.pool{display:flex;justify-content:center;gap:12px;margin-top:8px}
+.pool{display:flex;justify-content:center;gap:12px;margin-top:8px;flex-wrap:wrap}
 .token{
-  width:72px;height:84px;background:#111;color:#fff;border-radius:18px;
+  width:78px;height:90px;background:#111;color:#fff;border-radius:18px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:4px;cursor:grab;user-select:none
+  gap:4px;cursor:grab;user-select:none;touch-action:none;
 }
 .token.locked{opacity:.3;cursor:default}
 .name{font-weight:900;font-size:14px}
 
-/* marcador */
+/* marcador verde */
 .marker{
   position:absolute;width:38px;height:38px;border-radius:12px;
-  background:rgba(37,194,110,.25);border:2px solid rgba(37,194,110,.7);
-  transform:translate(-50%,-50%)
+  background:rgba(37,194,110,.25);
+  border:2px solid rgba(37,194,110,.7);
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+}
+
+@media (max-width: 980px){
+  .wrap{grid-template-columns:1fr;height:auto}
+  body{height:auto}
 }
 </style>
 </head>
@@ -81,6 +103,7 @@ svg{width:100%;height:auto;display:block}
 <body>
 <div class="wrap">
 
+<!-- IZQUIERDA: REFERENCIA -->
 <div class="panel">
   <div class="sheet">
     <div class="durRow">
@@ -88,218 +111,350 @@ svg{width:100%;height:auto;display:block}
       <button class="durBtn" id="btnBlanca">BLANCA</button>
     </div>
 
-    <svg viewBox="0 0 760 280" id="refSvg">
-      <g stroke="#000" stroke-width="2">
-        <line x1="40" y1="80" x2="720" y2="80"/>
-        <line x1="40" y1="105" x2="720" y2="105"/>
-        <line x1="40" y1="130" x2="720" y2="130"/>
-        <line x1="40" y1="155" x2="720" y2="155"/>
-        <line x1="40" y1="180" x2="720" y2="180"/>
-      </g>
-      <text x="54" y="155" font-size="56">𝄞</text>
-      <g id="refNotes"></g>
-      <g id="refNames"></g>
-    </svg>
+    <div class="stage">
+      <svg viewBox="0 0 760 280" id="refSvg">
+        <g stroke="#000" stroke-width="2">
+          <line x1="40" y1="80" x2="720" y2="80"/>
+          <line x1="40" y1="105" x2="720" y2="105"/>
+          <line x1="40" y1="130" x2="720" y2="130"/>
+          <line x1="40" y1="155" x2="720" y2="155"/>
+          <line x1="40" y1="180" x2="720" y2="180"/>
+        </g>
+        <text x="54" y="155" font-size="56">𝄞</text>
+        <g id="refNotes"></g>
+        <g id="refNames"></g>
+      </svg>
+    </div>
   </div>
 </div>
 
+<!-- DERECHA: EJERCICIOS -->
 <div class="panel" id="exercises"></div>
 
 </div>
 
 <script>
-// ================= AUDIO =================
+/* ====================== AUDIO ====================== */
 let ctx;
-const TEMPO = 0.66; // +50 % velocidad
+function ensureAudio(){
+  if(!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if(ctx.state === "suspended") ctx.resume();
+}
 
-function audio(){
-  if(!ctx) ctx=new AudioContext();
-  if(ctx.state==="suspended") ctx.resume();
+// volumen más fuerte (0.6)
+function tone(freq, ms){
+  ensureAudio();
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = "sine";
+  o.frequency.value = freq;
+
+  const now = ctx.currentTime;
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.exponentialRampToValueAtTime(0.6, now + 0.03);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + ms/1000);
+
+  o.connect(g);
+  g.connect(ctx.destination);
+  o.start(now);
+  o.stop(now + ms/1000 + 0.05);
 }
-function tone(f,d){
-  audio();
-  const o=ctx.createOscillator(), g=ctx.createGain();
-  o.type="sine"; o.frequency.value=f;
-  g.gain.setValueAtTime(.0001,ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(.65,ctx.currentTime+.03);
-  g.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+(d*TEMPO)/1000);
-  o.connect(g); g.connect(ctx.destination);
-  o.start(); o.stop(ctx.currentTime+(d*TEMPO)/1000+.05);
+
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+/* ====================== TEMPO (reproductores) ======================
+   Querías ambos reproductores rápidos (+50%): factor 0.66 aprox.
+   El silencio inicial sigue siendo 0.5s REAL.
+*/
+const PLAYER_TEMPO = 0.66;
+const PLAYER_DUR = 650;   // duración fija para reproductores (no depende de BLANCA)
+const PLAYER_GAP = 80;
+const PLAYER_SILENCE = 500;
+
+async function playSeq(freqs){
+  await sleep(PLAYER_SILENCE);
+  const noteMs = Math.round(PLAYER_DUR * PLAYER_TEMPO);
+  const stepMs = Math.round((PLAYER_DUR + PLAYER_GAP) * PLAYER_TEMPO);
+  for(const f of freqs){
+    tone(f, noteMs);
+    await sleep(stepMs);
+  }
 }
-const NEGRA = 900;
+
+/* ====================== MAPEO (clave de sol) ====================== */
+const MAP = {
+  do:  [261.63,205],  // DO con línea auxiliar corta
+  re:  [293.66,192],  // RE en espacio flotante
+  mi:  [329.63,180],
+  fa:  [349.23,167],
+  sol: [392.00,155],
+  la:  [440.00,142],
+  si:  [493.88,130],
+  do5: [523.25,117]
+};
+const SCALE = ["do","re","mi","fa","sol","la","si","do5"];
+
+function solLabel(sol){ return sol === "do5" ? "do" : sol; }
+
+/* ====================== DURACIONES (clic/colocación) ====================== */
+const NEGRA = 900;    // negra algo más larga
 const BLANCA = 2600;
 let dur = NEGRA;
 
-// duración fija SOLO para los reproductores (rápida)
-const PLAYER_DUR = 650;
-
-async function playSeq(freqs){
-  // silencio inicial
-  await new Promise(r => setTimeout(r, 500 * TEMPO));
-
-  for(const f of freqs){
-    // el reproductor usa PLAYER_DUR, NO dur
-    tone(f, PLAYER_DUR);
-
-    // pausa también basada en PLAYER_DUR
-    await new Promise(r => setTimeout(r, (PLAYER_DUR + 80) * TEMPO));
-  }
-}
-// ================= MAPEO =================
-const MAP={
-  do:[261.63,205],
-  re:[293.66,192],
-  mi:[329.63,180],
-  fa:[349.23,167],
-  sol:[392,155],
-  la:[440,142],
-  si:[493.88,130],
-  do5:[523.25,117]
-};
-const SCALE=["do","re","mi","fa","sol","la","si","do5"];
-
-// ================= SVG NOTA =================
+/* ====================== SVG: nota negra clásica ====================== */
 function noteSVG(x,y,ledger){
   return `
   <g transform="translate(${x},${y})">
-    ${ledger?`<line x1="-22" y1="0" x2="22" y2="0" stroke="#000" stroke-width="2"/>`:``}
+    ${ledger ? `<line x1="-22" y1="0" x2="22" y2="0" stroke="#000" stroke-width="2"/>` : ``}
     <ellipse rx="12" ry="9" fill="#000" transform="rotate(-18)"/>
     <line x1="10" y1="-2" x2="10" y2="-50" stroke="#000" stroke-width="3"/>
   </g>`;
 }
 
-// ================= REFERENCIA =================
-const refN=document.getElementById("refNotes");
-const refL=document.getElementById("refNames");
+/* ====================== REFERENCIA: notas clicables + nombres ====================== */
+const refN = document.getElementById("refNotes");
+const refL = document.getElementById("refNames");
+
 SCALE.forEach((s,i)=>{
-  const x=190+i*70;
-  const y=MAP[s][1];
-  const g=document.createElementNS("http://www.w3.org/2000/svg","g");
-  g.innerHTML=noteSVG(x,y,s==="do");
-  g.style.cursor="pointer";
-  g.onpointerdown=()=>tone(MAP[s][0],dur);
-  refN.append(g);
+  const x = 190 + i*70;
+  const y = MAP[s][1];
+
+  const g = document.createElementNS("http://www.w3.org/2000/svg","g");
+  g.innerHTML = noteSVG(x,y,s==="do");
+  g.style.cursor = "pointer";
+  g.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    tone(MAP[s][0], dur);
+  });
+  refN.appendChild(g);
+
   refL.insertAdjacentHTML("beforeend",
-    `<text x="${x-14}" y="265" font-size="16">${s==="do5"?"do":s}</text>`);
+    `<text x="${x-14}" y="265" font-size="16" font-weight="900">${solLabel(s)}</text>`);
 });
 
-// ================= DURACIÓN =================
-btnNegra.onclick=()=>{dur=NEGRA;btnNegra.classList.add("active");btnBlanca.classList.remove("active")};
-btnBlanca.onclick=()=>{dur=BLANCA;btnBlanca.classList.add("active");btnNegra.classList.remove("active")};
+/* ====================== Botones NEGRA/BLANCA ====================== */
+btnNegra.addEventListener("click", () => {
+  dur = NEGRA;
+  btnNegra.classList.add("active");
+  btnBlanca.classList.remove("active");
+});
+btnBlanca.addEventListener("click", () => {
+  dur = BLANCA;
+  btnBlanca.classList.add("active");
+  btnNegra.classList.remove("active");
+});
 
-// ================= EJERCICIOS =================
-const DATA=[
- ["do","do","do"],
- ["mi","mi","mi"],
- ["re","re","re"],
- ["do","re","mi"]
+/* ====================== EJERCICIOS ====================== */
+const DATA = [
+  ["do","do","do"],
+  ["mi","mi","mi"],
+  ["re","re","re"],
+  ["do","re","mi"]
 ];
 
-const exDiv=document.getElementById("exercises");
+const exDiv = document.getElementById("exercises");
 
-DATA.forEach(target=>{
-  const sheet=document.createElement("div");
-  sheet.className="sheet";
+// util: frecuencia lista
+function freqsFrom(arr){ return arr.map(n => MAP[n][0]); }
 
-  const playRow=document.createElement("div");
-  playRow.className="playRow";
-  const p1=document.createElement("button");
-  p1.className="playBtn"; p1.textContent="▶";
-  const p2=document.createElement("button");
-  p2.className="playBtn"; p2.textContent="▶";
-  playRow.append(p1,p2);
-  sheet.append(playRow);
+// escoger nota más cercana (laxo) + histéresis simple para no parpadear
+function nearestSolByY(y, lastSol){
+  let best = null, bestD = Infinity;
+  for(const k in MAP){
+    const dy = Math.abs(MAP[k][1] - y);
+    if(dy < bestD){ bestD = dy; best = k; }
+  }
+  // histéresis: si ya teníamos una, no cambiamos a otra a menos que mejore bastante
+  if(lastSol){
+    const lastD = Math.abs(MAP[lastSol][1] - y);
+    const hysteresis = 6; // px en viewBox
+    if(best !== lastSol && !(bestD + hysteresis < lastD)){
+      return { sol:lastSol, dist:lastD };
+    }
+  }
+  return { sol:best, dist:bestD };
+}
 
-  const stage=document.createElement("div");
-  stage.className="stage";
-  stage.innerHTML=document.getElementById("refSvg").outerHTML;
-  const svg=stage.querySelector("svg");
+DATA.forEach(target => {
+  const sheet = document.createElement("div");
+  sheet.className = "sheet";
+
+  // reproductores
+  const playRow = document.createElement("div");
+  playRow.className = "playRow";
+
+  const pObj = document.createElement("button");
+  pObj.className = "playBtn";
+  pObj.textContent = "▶";
+
+  const pChild = document.createElement("button");
+  pChild.className = "playBtn child"; // rojo por defecto
+  pChild.textContent = "▶";
+
+  playRow.append(pObj, pChild);
+  sheet.appendChild(playRow);
+
+  // pentagrama
+  const stage = document.createElement("div");
+  stage.className = "stage";
+  stage.innerHTML = document.getElementById("refSvg").outerHTML;
+
+  const svg = stage.querySelector("svg");
   svg.querySelector("#refNotes")?.remove();
   svg.querySelector("#refNames")?.remove();
-  const placedG=document.createElementNS("http://www.w3.org/2000/svg","g");
-  const bandG=document.createElementNS("http://www.w3.org/2000/svg","g");
-  svg.append(bandG);
-  svg.append(placedG);
-  sheet.append(stage);
 
-  const pool=document.createElement("div");
-  pool.className="pool";
-  sheet.append(pool);
+  // capa banda amarilla y capa notas colocadas
+  const bandG = document.createElementNS("http://www.w3.org/2000/svg","g");
+  const placedG = document.createElementNS("http://www.w3.org/2000/svg","g");
+  svg.appendChild(bandG);
+  svg.appendChild(placedG);
 
-  let placed=[null,null,null];
+  sheet.appendChild(stage);
 
-  target.forEach(n=>{
-    const t=document.createElement("div");
-    t.className="token";
-    t.innerHTML=`♪<div class="name">${n==="do5"?"do":n}</div>`;
-    t.onpointerdown=e=>{
+  // pool
+  const pool = document.createElement("div");
+  pool.className = "pool";
+  sheet.appendChild(pool);
+
+  let placed = [null, null, null];
+
+  // actualizar color del play del niño
+  function updateChildPlayColor(){
+    const ok = placed.every(Boolean) && placed.join("|") === target.join("|");
+    if(ok) pChild.classList.add("ok");
+    else pChild.classList.remove("ok");
+  }
+  updateChildPlayColor();
+
+  // slots x para colocar (bonito)
+  const SLOT_X = [300, 400, 500];
+
+  // dibujar banda amarilla (solo dentro del pentagrama)
+  function showBand(sol){
+    bandG.innerHTML = "";
+    if(!sol) return;
+    const y = MAP[sol][1];
+    const rect = document.createElementNS("http://www.w3.org/2000/svg","rect");
+    rect.setAttribute("x", "40");
+    rect.setAttribute("y", String(y - 9));
+    rect.setAttribute("width", "680");
+    rect.setAttribute("height", "18");
+    rect.setAttribute("rx", "6");
+    rect.setAttribute("fill", getComputedStyle(document.documentElement).getPropertyValue("--yellow").trim() || "rgba(180,140,0,.35)");
+    bandG.appendChild(rect);
+  }
+
+  // crear tokens (exactamente las notas objetivo, con nombre)
+  target.forEach(n => {
+    const t = document.createElement("div");
+    t.className = "token";
+
+    // icono nota negra + nombre
+    t.innerHTML = `
+      <svg width="30" height="30" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M14 3v10.4a3.6 3.6 0 1 1-2-3.2V5.2l8-2.2V13a3.6 3.6 0 1 1-2-3.2V3z" fill="#fff"/>
+      </svg>
+      <div class="name">${solLabel(n)}</div>
+    `;
+
+    // click/tap reproduce SOLO la nota (con duración seleccionada)
+    t.addEventListener("click", () => tone(MAP[n][0], dur));
+
+    // drag
+    t.addEventListener("pointerdown", (e) => {
       if(t.classList.contains("locked")) return;
-      const rect=t.getBoundingClientRect();
-      const ghost=t.cloneNode(true);
-      ghost.style.position="fixed";
-      ghost.style.left=rect.left+"px";
-      ghost.style.top=rect.top+"px";
-      ghost.style.opacity=".7";
-      document.body.append(ghost);
+      e.preventDefault();
+      ensureAudio();
 
-      const move=ev=>{
-        ghost.style.left=ev.clientX-rect.width/2+"px";
-        ghost.style.top=ev.clientY-rect.height/2+"px";
+      const startRect = t.getBoundingClientRect();
+      const ghost = t.cloneNode(true);
+      ghost.style.position = "fixed";
+      ghost.style.left = startRect.left + "px";
+      ghost.style.top = startRect.top + "px";
+      ghost.style.opacity = "0.75";
+      ghost.style.zIndex = "9999";
+      ghost.style.pointerEvents = "none";
+      document.body.appendChild(ghost);
 
-        bandG.innerHTML="";
-        const r=stage.getBoundingClientRect();
-        if(ev.clientY>r.top && ev.clientY<r.bottom){
-          const rel=(ev.clientY-r.top)/r.height*280;
-          let best=null,d=1e9;
-          for(const k in MAP){
-            const dy=Math.abs(MAP[k][1]-rel);
-            if(dy<d){d=dy;best=k}
-          }
-          const y=MAP[best][1];
-          bandG.innerHTML=`<rect x="40" y="${y-9}" width="680" height="18" rx="6" fill="${getComputedStyle(document.documentElement).getPropertyValue('--yellow')}"/>`;
+      let hoverSol = null;
+
+      const move = (ev) => {
+        ghost.style.left = (ev.clientX - startRect.width/2) + "px";
+        ghost.style.top  = (ev.clientY - startRect.height/2) + "px";
+
+        const r = stage.getBoundingClientRect();
+        const inside = (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom);
+        if(!inside){
+          showBand(null);
+          hoverSol = null;
+          return;
         }
+
+        const relY = (ev.clientY - r.top) / r.height * 280;
+        const pick = nearestSolByY(relY, hoverSol);
+        hoverSol = pick.sol;
+        showBand(hoverSol);
       };
 
-      const up=ev=>{
-        document.removeEventListener("pointermove",move);
-        document.removeEventListener("pointerup",up);
-        bandG.innerHTML="";
+      const up = (ev) => {
+        document.removeEventListener("pointermove", move);
+        document.removeEventListener("pointerup", up);
+        showBand(null);
         ghost.remove();
 
-        const r=stage.getBoundingClientRect();
-        if(ev.clientX>r.left && ev.clientX<r.right &&
-           ev.clientY>r.top && ev.clientY<r.bottom){
-          const rel=(ev.clientY-r.top)/r.height*280;
-          let best=null,d=1e9;
-          for(const k in MAP){
-            const dy=Math.abs(MAP[k][1]-rel);
-            if(dy<d){d=dy;best=k}
-          }
-          const idx=placed.indexOf(null);
-          if(best===target[idx]){
-            placed[idx]=best;
-            placedG.insertAdjacentHTML("beforeend",
-              noteSVG(300+idx*100,MAP[best][1],best==="do"));
-            const m=document.createElement("div");
-            m.className="marker";
-            m.style.left=(300+idx*100)/760*stage.offsetWidth+"px";
-            m.style.top=MAP[best][1]/280*stage.offsetHeight+"px";
-            stage.append(m);
-            t.classList.add("locked");
-            tone(MAP[best][0],dur);
-          }
+        const r = stage.getBoundingClientRect();
+        const inside = (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom);
+        if(!inside) return;
+
+        const idx = placed.indexOf(null);
+        if(idx === -1) return;
+
+        const relY = (ev.clientY - r.top) / r.height * 280;
+        const pick = nearestSolByY(relY, null);
+        const best = pick.sol;
+
+        // validación: debe coincidir con la nota que toca en ese slot
+        if(best === target[idx] && n === target[idx]){
+          placed[idx] = best;
+
+          placedG.insertAdjacentHTML("beforeend",
+            noteSVG(SLOT_X[idx], MAP[best][1], best === "do")
+          );
+
+          // marcador verde en el lugar
+          const m = document.createElement("div");
+          m.className = "marker";
+          m.style.left = (SLOT_X[idx] / 760 * stage.offsetWidth) + "px";
+          m.style.top  = (MAP[best][1] / 280 * stage.offsetHeight) + "px";
+          stage.appendChild(m);
+
+          t.classList.add("locked");
+          tone(MAP[best][0], dur);
+
+          updateChildPlayColor();
         }
       };
-      document.addEventListener("pointermove",move);
-      document.addEventListener("pointerup",up);
-    };
-    pool.append(t);
+
+      document.addEventListener("pointermove", move, { passive:false });
+      document.addEventListener("pointerup", up, { passive:false });
+    });
+
+    pool.appendChild(t);
   });
 
-  p1.onclick=()=>playSeq(target.map(n=>MAP[n][0]));
-  p2.onclick=()=>playSeq(placed.filter(Boolean).map(n=>MAP[n][0]));
+  // plays (ambos rápidos)
+  pObj.addEventListener("click", async () => {
+    await playSeq(freqsFrom(target));
+  });
 
-  exDiv.append(sheet);
+  pChild.addEventListener("click", async () => {
+    const current = placed.filter(Boolean);
+    await playSeq(freqsFrom(current));
+    updateChildPlayColor();
+  });
+
+  sheet.appendChild(pool);
+  exDiv.appendChild(sheet);
 });
 </script>
 </body>
