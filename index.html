@@ -183,21 +183,28 @@ svg{ width:100%; height:auto; display:block; }
   <div class="wrap">
     <div class="panel">
 
+      <!-- CABECERA -->
       <div class="rowTop">
         <p class="title" id="lvlTitle">Nivel 1</p>
 
         <div class="controls" aria-label="Controles">
+          <!-- Modo duración SOLO PARA REFERENCIA -->
           <button class="ctrlBtn modeBtn active" id="btnNegra" aria-label="Referencia negra">N</button>
           <button class="ctrlBtn modeBtn" id="btnBlanca" aria-label="Referencia blanca">B</button>
 
+          <!-- Escuchar objetivo (SIEMPRE NEGRAS en el ejercicio) -->
           <button class="ctrlBtn" id="btnListen" aria-label="Escuchar objetivo">▶</button>
+
+          <!-- Escuchar lo que llevo (SIEMPRE NEGRAS) -->
           <button class="ctrlBtn childBtn" id="btnChild" aria-label="Escuchar lo que llevo">▶</button>
+
+          <!-- Siguiente (bloqueado hasta acertar) -->
           <button class="ctrlBtn" id="btnNext" aria-label="Siguiente" disabled>→</button>
         </div>
       </div>
       <div class="hintBar"></div>
 
-      <!-- ARRIBA: REFERENCIA -->
+      <!-- ARRIBA: ESCALA DE REFERENCIA -->
       <div class="sheet">
         <div class="stage refWrap" id="refStage">
           <svg viewBox="0 0 760 260" id="refSvg" aria-label="Escala de referencia">
@@ -226,7 +233,7 @@ svg{ width:100%; height:auto; display:block; }
         </div>
       </div>
 
-      <!-- ABAJO: EJERCICIO -->
+      <!-- ABAJO: NIVEL ACTUAL -->
       <div class="sheet">
         <div class="stage" id="levelStage">
           <svg viewBox="0 0 760 280" id="lvlSvg" aria-label="Pentagrama del nivel">
@@ -239,7 +246,10 @@ svg{ width:100%; height:auto; display:block; }
             </g>
             <text x="54" y="155" font-size="56">𝄞</text>
 
+            <!-- banda amarilla -->
             <g id="bandG"></g>
+
+            <!-- notas colocadas -->
             <g id="placedG"></g>
           </svg>
 
@@ -261,8 +271,11 @@ svg{ width:100%; height:auto; display:block; }
   </div>
 
 <script>
-/* ===================== AUDIO ===================== */
+/* =========================================================
+   ✅ AUDIO MP3
+   ========================================================= */
 const AUDIO_FOLDER = ""; // <-- CAMBIA AQUÍ si los mp3 están en una carpeta
+
 const SAMPLES = {
   do:  { white: AUDIO_FOLDER + "do_blanca.mp3",  black: AUDIO_FOLDER + "do_negra.mp3"  },
   re:  { white: AUDIO_FOLDER + "re_blanca.mp3",  black: AUDIO_FOLDER + "re_negra.mp3"  },
@@ -273,64 +286,88 @@ const SAMPLES = {
   si:  { white: AUDIO_FOLDER + "si_blanca.mp3",  black: AUDIO_FOLDER + "si_negra.mp3"  },
 };
 
-/* ===================== MAPEO AFINABLE =====================
-   Tus líneas del pentagrama (ejercicio) están en: 80,105,130,155,180
-   Distancia entre líneas = 25
-   => media distancia (línea/espacio) = 12.5
-*/
-const STAFF_BOTTOM_LINE_Y = 180;
-const LINE_GAP = 25;
-const STEP = LINE_GAP / 2; // 12.5
-
-// 🔧 AJUSTE FINO GLOBAL: si lo ves todo subido/bajado, toca SOLO esto.
-const Y_OFFSET = 6; // prueba 6, 10, 14... hasta que encaje perfecto
-
-// Escala típica en clave de sol, subiendo en pasos de STEP.
-// (Aquí colocamos DO por debajo del pentagrama, como en tu ejemplo)
+/* =========================================================
+   MAPEO VISUAL (Y) del EJERCICIO (viewBox 280)
+   ========================================================= */
 const MAP = {
-  do:  { y: STAFF_BOTTOM_LINE_Y + 2*STEP + Y_OFFSET }, // C (línea auxiliar)
-  re:  { y: STAFF_BOTTOM_LINE_Y + 1*STEP + Y_OFFSET }, // D (espacio bajo)
-  mi:  { y: STAFF_BOTTOM_LINE_Y + 0*STEP + Y_OFFSET }, // E (línea inferior)
-  fa:  { y: STAFF_BOTTOM_LINE_Y - 1*STEP + Y_OFFSET },
-  sol: { y: STAFF_BOTTOM_LINE_Y - 2*STEP + Y_OFFSET },
-  la:  { y: STAFF_BOTTOM_LINE_Y - 3*STEP + Y_OFFSET },
-  si:  { y: STAFF_BOTTOM_LINE_Y - 4*STEP + Y_OFFSET },
+  do:  { y:232, ledgerLines:2 },
+  re:  { y:220, ledgerLines:0 },
+  mi:  { y:208, ledgerLines:0 },
+  fa:  { y:196, ledgerLines:0 },
+  sol: { y:184, ledgerLines:0 },
+  la:  { y:172, ledgerLines:0 },
+  si:  { y:160, ledgerLines:0 },
 };
 const SCALE = ["do","re","mi","fa","sol","la","si"];
 
-/* ===================== LEDGERS (líneas auxiliares) =====================
-   Calcula cuántas líneas auxiliares hacen falta por debajo/encima.
-   Para tu ejercicio nos centramos sobretodo en debajo (do).
-*/
-function ledgerLinesBelow(noteY){
-  if(noteY <= STAFF_BOTTOM_LINE_Y) return 0;
-  // cada 2*STEP (=LINE_GAP=25) aparece una nueva línea auxiliar
-  return Math.floor((noteY - STAFF_BOTTOM_LINE_Y) / LINE_GAP) + 0;
+/* =========================================================
+   ✅ MAPE0 PERFECTO PARA REFERENCIA (sin “-30” ni escalado raro)
+   Convertimos la y del EJERCICIO a "pasos" (línea/espacio) y
+   reconstruimos la y en el pentagrama de REFERENCIA.
+   - Ejercicio: líneas en 80..180 (línea inferior=180)
+   - Referencia: líneas en 60..160 (línea inferior=160)
+   - gap=25 => step=12.5
+   ========================================================= */
+const EX_BOTTOM_LINE = 180;
+const EX_LINE_GAP = 25;
+const EX_STEP = EX_LINE_GAP / 2; // 12.5
+
+const REF_BOTTOM_LINE = 160;
+const REF_LINE_GAP = 25;
+const REF_STEP = REF_LINE_GAP / 2; // 12.5
+
+function refY(sol){
+  const yEx = MAP[sol].y;
+
+  // cuántos "pasos" (12.5) hay desde la línea inferior del ejercicio hasta la nota
+  const stepsFromBottom = (EX_BOTTOM_LINE - yEx) / EX_STEP;
+
+  // reconstruimos esa misma posición relativa en la referencia
+  return REF_BOTTOM_LINE - stepsFromBottom * REF_STEP;
 }
 
-function ledgerLinesSVG(linesBelow){
-  if(!linesBelow) return "";
-  // dibujamos líneas auxiliares en y=0, y=+LINE_GAP, y=+2*LINE_GAP...
-  // dentro del grupo de la nota (grupo está en (x,yNota))
+/* =========================================================
+   NIVELES
+   ========================================================= */
+const LEVELS = [
+  ["do","re","mi","sol"],
+  ["do","mi","sol","fa"],
+  ["re","mi","fa","sol"],
+  ["mi","re","do","sol"],
+  ["sol","fa","mi","re"],
+  ["do","re","fa","sol"],
+  ["re","fa","sol","la"],
+  ["mi","fa","sol","la"],
+  ["sol","la","si","do"],
+  ["la","si","do","re"],
+];
+
+/* =========================================================
+   SVG helpers
+   ========================================================= */
+function ledgerLinesSVG(linesCount){
+  if(!linesCount) return "";
   let out = "";
-  for(let i=0;i<linesBelow;i++){
-    const yy = i * LINE_GAP;
+  const spacing = 12; // lo mantenemos como lo tenías (visual)
+  for(let i=0;i<linesCount;i++){
+    const yy = i * spacing;
     out += `<line x1="-22" y1="${yy}" x2="22" y2="${yy}" stroke="#000" stroke-width="2"/>`;
   }
   return out;
 }
 
-function noteSVG(x,y){
-  const ledBelow = ledgerLinesBelow(y);
+function noteSVG(x,y,ledgerLines){
   return `
-  <g class="placedNote" transform="translate(${x},${y})">
-    ${ledgerLinesSVG(ledBelow)}
+  <g class="placedNote" transform="translate(${x},${y})" data-x="${x}" data-y="${y}">
+    ${ledgerLinesSVG(ledgerLines)}
     <ellipse rx="12" ry="9" fill="#000" transform="rotate(-18)"/>
     <line x1="10" y1="-2" x2="10" y2="-50" stroke="#000" stroke-width="3"/>
   </g>`;
 }
 
-/* ===================== Anti-solape ===================== */
+/* =========================================================
+   ✅ Anti-solape
+   ========================================================= */
 let ctx = null;
 let isPlaying = false;
 let activeSources = [];
@@ -341,6 +378,7 @@ function getAudioContext(){
   if(ctx.state === "suspended") ctx.resume();
   return ctx;
 }
+
 async function loadBuffer(url){
   if(bufferCache.has(url)) return bufferCache.get(url);
   const res = await fetch(url);
@@ -351,12 +389,14 @@ async function loadBuffer(url){
   bufferCache.set(url, buf);
   return buf;
 }
+
 function stopPlayback(){
   activeSources.forEach(s => { try{ s.stop(0); }catch(e){} });
   activeSources = [];
   isPlaying = false;
   hideSpeakerAll();
 }
+
 function playBufferAt(buffer, startTime, gainValue=1.0){
   const ac = getAudioContext();
   const src = ac.createBufferSource();
@@ -370,10 +410,15 @@ function playBufferAt(buffer, startTime, gainValue=1.0){
   return buffer.duration;
 }
 
-/* ===================== Modo duración (solo referencia) ===================== */
+/* =========================================================
+   Modo duración:
+   - REFERENCIA: usa MODE ("black"/"white")
+   - EJERCICIO: SIEMPRE "black"
+   ========================================================= */
 let MODE = "black";
 const btnNegra = document.getElementById("btnNegra");
 const btnBlanca = document.getElementById("btnBlanca");
+
 btnNegra.addEventListener("click", () => {
   MODE = "black";
   btnNegra.classList.add("active");
@@ -385,14 +430,19 @@ btnBlanca.addEventListener("click", () => {
   btnNegra.classList.remove("active");
 });
 
-/* ===================== Speakers ===================== */
+/* =========================================================
+   Speakers
+   ========================================================= */
 const speakerRef = document.getElementById("speakerRef");
 const speakerLvl = document.getElementById("speakerLvl");
+
 function showSpeaker(el){ el.classList.add("show"); }
 function hideSpeaker(el){ el.classList.remove("show"); }
 function hideSpeakerAll(){ hideSpeaker(speakerRef); hideSpeaker(speakerLvl); }
 
-/* ===================== Play note / sequence ===================== */
+/* =========================================================
+   Play NOTE / SEQUENCE
+   ========================================================= */
 async function playNote(name, speakerEl, reference=false){
   stopPlayback();
   isPlaying = true;
@@ -412,6 +462,7 @@ async function playNote(name, speakerEl, reference=false){
     isPlaying = false;
   }, (dur * 1000) + 120);
 }
+
 async function playSequence(names, speakerEl, reference=false){
   if(isPlaying) return;
 
@@ -420,7 +471,6 @@ async function playSequence(names, speakerEl, reference=false){
   showSpeaker(speakerEl);
 
   const kind = reference ? MODE : "black";
-
   const urls = names.map(n => SAMPLES[n]?.[kind]).filter(Boolean);
   const buffers = [];
   for(const u of urls) buffers.push(await loadBuffer(u));
@@ -441,21 +491,19 @@ async function playSequence(names, speakerEl, reference=false){
   }, totalMs);
 }
 
-/* ===================== Referencia: notas + nombres ===================== */
+/* =========================================================
+   ARRIBA: Referencia (clicable) + nombres debajo
+   ========================================================= */
 const refNotes = document.getElementById("refNotes");
 const refNames = document.getElementById("refNames");
-
-function refY(sol){
-  // Pasamos de y(280) a viewBox 260 manteniendo proporción
-  return (MAP[sol].y / 280) * 260 - 30;
-}
 
 SCALE.forEach((s,i)=>{
   const x = 170 + i*80;
   const y = refY(s);
 
   const g = document.createElementNS("http://www.w3.org/2000/svg","g");
-  g.innerHTML = noteSVG(x, y);
+  // ✅ misma nota pero con y calculada "perfecta"
+  g.innerHTML = noteSVG(x, y, MAP[s].ledgerLines);
   g.style.cursor = "pointer";
   g.addEventListener("pointerdown", (e) => {
     e.preventDefault();
@@ -468,20 +516,9 @@ SCALE.forEach((s,i)=>{
   );
 });
 
-/* ===================== Niveles ===================== */
-const LEVELS = [
-  ["do","re","mi","sol"],
-  ["do","mi","sol","fa"],
-  ["re","mi","fa","sol"],
-  ["mi","re","do","sol"],
-  ["sol","fa","mi","re"],
-  ["do","re","fa","sol"],
-  ["re","fa","sol","la"],
-  ["mi","fa","sol","la"],
-  ["sol","la","si","do"],
-  ["la","si","do","re"],
-];
-
+/* =========================================================
+   ABAJO: Nivel actual
+   ========================================================= */
 const lvlTitle = document.getElementById("lvlTitle");
 const btnListen = document.getElementById("btnListen");
 const btnChild  = document.getElementById("btnChild");
@@ -551,7 +588,7 @@ function onComplete(){
 
 function addPlacedNote(sol, slotIdx){
   placedG.insertAdjacentHTML("beforeend",
-    noteSVG(SLOT_X[slotIdx], MAP[sol].y)
+    noteSVG(SLOT_X[slotIdx], MAP[sol].y, MAP[sol].ledgerLines)
   );
 
   const m = document.createElement("div");
@@ -566,6 +603,7 @@ function renderCurrentToken(){
   if(tokenIdx >= target.length) return;
 
   const n = target[tokenIdx];
+
   const t = document.createElement("div");
   t.className = "token";
   t.dataset.note = n;
