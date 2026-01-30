@@ -104,7 +104,7 @@ svg{ width:100%; height:auto; display:block; }
 
 /* ref más pequeño */
 .refWrap{
-  width:60%;           /* ✅ 40% más pequeño aprox */
+  width:60%;
   margin:0 auto;
 }
 
@@ -183,28 +183,21 @@ svg{ width:100%; height:auto; display:block; }
   <div class="wrap">
     <div class="panel">
 
-      <!-- CABECERA -->
       <div class="rowTop">
         <p class="title" id="lvlTitle">Nivel 1</p>
 
         <div class="controls" aria-label="Controles">
-          <!-- Modo duración SOLO PARA REFERENCIA -->
           <button class="ctrlBtn modeBtn active" id="btnNegra" aria-label="Referencia negra">N</button>
           <button class="ctrlBtn modeBtn" id="btnBlanca" aria-label="Referencia blanca">B</button>
 
-          <!-- Escuchar objetivo (SIEMPRE NEGRAS en el ejercicio) -->
           <button class="ctrlBtn" id="btnListen" aria-label="Escuchar objetivo">▶</button>
-
-          <!-- Escuchar lo que llevo (SIEMPRE NEGRAS) -->
           <button class="ctrlBtn childBtn" id="btnChild" aria-label="Escuchar lo que llevo">▶</button>
-
-          <!-- Siguiente (bloqueado hasta acertar) -->
           <button class="ctrlBtn" id="btnNext" aria-label="Siguiente" disabled>→</button>
         </div>
       </div>
       <div class="hintBar"></div>
 
-      <!-- ARRIBA: ESCALA DE REFERENCIA (más pequeña + nombres) -->
+      <!-- ARRIBA: REFERENCIA -->
       <div class="sheet">
         <div class="stage refWrap" id="refStage">
           <svg viewBox="0 0 760 260" id="refSvg" aria-label="Escala de referencia">
@@ -233,7 +226,7 @@ svg{ width:100%; height:auto; display:block; }
         </div>
       </div>
 
-      <!-- ABAJO: NIVEL ACTUAL -->
+      <!-- ABAJO: EJERCICIO -->
       <div class="sheet">
         <div class="stage" id="levelStage">
           <svg viewBox="0 0 760 280" id="lvlSvg" aria-label="Pentagrama del nivel">
@@ -246,10 +239,7 @@ svg{ width:100%; height:auto; display:block; }
             </g>
             <text x="54" y="155" font-size="56">𝄞</text>
 
-            <!-- banda amarilla -->
             <g id="bandG"></g>
-
-            <!-- notas colocadas -->
             <g id="placedG"></g>
           </svg>
 
@@ -264,7 +254,6 @@ svg{ width:100%; height:auto; display:block; }
           </div>
         </div>
 
-        <!-- Pool: AHORA 1 FICHA A LA VEZ -->
         <div class="pool" id="pool" aria-label="Fichas"></div>
       </div>
 
@@ -272,13 +261,8 @@ svg{ width:100%; height:auto; display:block; }
   </div>
 
 <script>
-/* =========================================================
-   ✅ AUDIO MP3 (tus nombres)
-   - Si están junto al HTML, AUDIO_FOLDER = ""
-   - Si están en carpeta /audio, AUDIO_FOLDER = "audio/"
-   ========================================================= */
+/* ===================== AUDIO ===================== */
 const AUDIO_FOLDER = ""; // <-- CAMBIA AQUÍ si los mp3 están en una carpeta
-
 const SAMPLES = {
   do:  { white: AUDIO_FOLDER + "do_blanca.mp3",  black: AUDIO_FOLDER + "do_negra.mp3"  },
   re:  { white: AUDIO_FOLDER + "re_blanca.mp3",  black: AUDIO_FOLDER + "re_negra.mp3"  },
@@ -289,66 +273,64 @@ const SAMPLES = {
   si:  { white: AUDIO_FOLDER + "si_blanca.mp3",  black: AUDIO_FOLDER + "si_negra.mp3"  },
 };
 
-/* =========================================================
-   MAPEO VISUAL (Y) en el pentagrama
-   ✅ Ajustado para que DO esté más abajo (con dos líneas auxiliares)
-   ========================================================= */
+/* ===================== MAPEO AFINABLE =====================
+   Tus líneas del pentagrama (ejercicio) están en: 80,105,130,155,180
+   Distancia entre líneas = 25
+   => media distancia (línea/espacio) = 12.5
+*/
+const STAFF_BOTTOM_LINE_Y = 180;
+const LINE_GAP = 25;
+const STEP = LINE_GAP / 2; // 12.5
+
+// 🔧 AJUSTE FINO GLOBAL: si lo ves todo subido/bajado, toca SOLO esto.
+const Y_OFFSET = 0; // prueba 6, 10, 14... hasta que encaje perfecto
+
+// Escala típica en clave de sol, subiendo en pasos de STEP.
+// (Aquí colocamos DO por debajo del pentagrama, como en tu ejemplo)
 const MAP = {
-  // y en viewBox 280 del ejercicio
-  do:  { y:232, ledgerLines:2 }, // ✅ más abajo (2 líneas auxiliares)
-  re:  { y:220, ledgerLines:0 },
-  mi:  { y:208, ledgerLines:0 },
-  fa:  { y:196, ledgerLines:0 },
-  sol: { y:184, ledgerLines:0 },
-  la:  { y:172, ledgerLines:0 },
-  si:  { y:160, ledgerLines:0 },
+  do:  { y: STAFF_BOTTOM_LINE_Y + 2*STEP + Y_OFFSET }, // C (línea auxiliar)
+  re:  { y: STAFF_BOTTOM_LINE_Y + 1*STEP + Y_OFFSET }, // D (espacio bajo)
+  mi:  { y: STAFF_BOTTOM_LINE_Y + 0*STEP + Y_OFFSET }, // E (línea inferior)
+  fa:  { y: STAFF_BOTTOM_LINE_Y - 1*STEP + Y_OFFSET },
+  sol: { y: STAFF_BOTTOM_LINE_Y - 2*STEP + Y_OFFSET },
+  la:  { y: STAFF_BOTTOM_LINE_Y - 3*STEP + Y_OFFSET },
+  si:  { y: STAFF_BOTTOM_LINE_Y - 4*STEP + Y_OFFSET },
 };
 const SCALE = ["do","re","mi","fa","sol","la","si"];
 
-/* =========================================================
-   NIVELES (4 notas). No se avanza hasta completar bien.
-   ========================================================= */
-const LEVELS = [
-  ["do","re","mi","sol"],
-  ["do","mi","sol","fa"],
-  ["re","mi","fa","sol"],
-  ["mi","re","do","sol"],
-  ["sol","fa","mi","re"],
-  ["do","re","fa","sol"],
-  ["re","fa","sol","la"],
-  ["mi","fa","sol","la"],
-  ["sol","la","si","do"],
-  ["la","si","do","re"],
-];
+/* ===================== LEDGERS (líneas auxiliares) =====================
+   Calcula cuántas líneas auxiliares hacen falta por debajo/encima.
+   Para tu ejercicio nos centramos sobretodo en debajo (do).
+*/
+function ledgerLinesBelow(noteY){
+  if(noteY <= STAFF_BOTTOM_LINE_Y) return 0;
+  // cada 2*STEP (=LINE_GAP=25) aparece una nueva línea auxiliar
+  return Math.floor((noteY - STAFF_BOTTOM_LINE_Y) / LINE_GAP) + 0;
+}
 
-/* =========================================================
-   SVG helpers: nota + 0/1/2 líneas auxiliares
-   ========================================================= */
-function ledgerLinesSVG(linesCount){
-  if(!linesCount) return "";
-  // Dibujamos líneas centradas en el y=0 del grupo, separadas 12px
-  // (aprox para que se vea claro aunque no sea "perfecto" musical)
+function ledgerLinesSVG(linesBelow){
+  if(!linesBelow) return "";
+  // dibujamos líneas auxiliares en y=0, y=+LINE_GAP, y=+2*LINE_GAP...
+  // dentro del grupo de la nota (grupo está en (x,yNota))
   let out = "";
-  const spacing = 12;
-  for(let i=0;i<linesCount;i++){
-    const yy = i * spacing;
+  for(let i=0;i<linesBelow;i++){
+    const yy = i * LINE_GAP;
     out += `<line x1="-22" y1="${yy}" x2="22" y2="${yy}" stroke="#000" stroke-width="2"/>`;
   }
   return out;
 }
 
-function noteSVG(x,y,ledgerLines){
+function noteSVG(x,y){
+  const ledBelow = ledgerLinesBelow(y);
   return `
-  <g class="placedNote" transform="translate(${x},${y})" data-x="${x}" data-y="${y}">
-    ${ledgerLinesSVG(ledgerLines)}
+  <g class="placedNote" transform="translate(${x},${y})">
+    ${ledgerLinesSVG(ledBelow)}
     <ellipse rx="12" ry="9" fill="#000" transform="rotate(-18)"/>
     <line x1="10" y1="-2" x2="10" y2="-50" stroke="#000" stroke-width="3"/>
   </g>`;
 }
 
-/* =========================================================
-   ✅ Anti-solape: una reproducción por click
-   ========================================================= */
+/* ===================== Anti-solape ===================== */
 let ctx = null;
 let isPlaying = false;
 let activeSources = [];
@@ -359,7 +341,6 @@ function getAudioContext(){
   if(ctx.state === "suspended") ctx.resume();
   return ctx;
 }
-
 async function loadBuffer(url){
   if(bufferCache.has(url)) return bufferCache.get(url);
   const res = await fetch(url);
@@ -370,44 +351,29 @@ async function loadBuffer(url){
   bufferCache.set(url, buf);
   return buf;
 }
-
 function stopPlayback(){
   activeSources.forEach(s => { try{ s.stop(0); }catch(e){} });
   activeSources = [];
   isPlaying = false;
   hideSpeakerAll();
 }
-
 function playBufferAt(buffer, startTime, gainValue=1.0){
   const ac = getAudioContext();
   const src = ac.createBufferSource();
   const gain = ac.createGain();
-
   src.buffer = buffer;
-
-  // 🔧 volumen global mp3 (sube a 1.2 si van flojos)
   gain.gain.setValueAtTime(gainValue, startTime);
-
   src.connect(gain).connect(ac.destination);
-
   activeSources.push(src);
-  src.onended = () => {
-    activeSources = activeSources.filter(x => x !== src);
-  };
-
+  src.onended = () => { activeSources = activeSources.filter(x => x !== src); };
   src.start(startTime);
   return buffer.duration;
 }
 
-/* =========================================================
-   Modo duración:
-   - REFERENCIA: usa MODE ("black"/"white")
-   - EJERCICIO: SIEMPRE "black" (NEGRAS)
-   ========================================================= */
-let MODE = "black"; // solo referencia
+/* ===================== Modo duración (solo referencia) ===================== */
+let MODE = "black";
 const btnNegra = document.getElementById("btnNegra");
 const btnBlanca = document.getElementById("btnBlanca");
-
 btnNegra.addEventListener("click", () => {
   MODE = "black";
   btnNegra.classList.add("active");
@@ -419,24 +385,15 @@ btnBlanca.addEventListener("click", () => {
   btnNegra.classList.remove("active");
 });
 
-/* =========================================================
-   Speakers
-   ========================================================= */
+/* ===================== Speakers ===================== */
 const speakerRef = document.getElementById("speakerRef");
 const speakerLvl = document.getElementById("speakerLvl");
-
 function showSpeaker(el){ el.classList.add("show"); }
 function hideSpeaker(el){ el.classList.remove("show"); }
 function hideSpeakerAll(){ hideSpeaker(speakerRef); hideSpeaker(speakerLvl); }
 
-/* =========================================================
-   Play NOTE:
-   - reference=true => usa MODE (white/black)
-   - reference=false => SIEMPRE black
-   ========================================================= */
+/* ===================== Play note / sequence ===================== */
 async function playNote(name, speakerEl, reference=false){
-  // no bloqueamos por isPlaying para permitir clicks sueltos;
-  // pero sí evitamos solapes:
   stopPlayback();
   isPlaying = true;
   showSpeaker(speakerEl);
@@ -455,11 +412,6 @@ async function playNote(name, speakerEl, reference=false){
     isPlaying = false;
   }, (dur * 1000) + 120);
 }
-
-/* =========================================================
-   Play SEQUENCE:
-   - reference=false => siempre negras (ejercicio)
-   ========================================================= */
 async function playSequence(names, speakerEl, reference=false){
   if(isPlaying) return;
 
@@ -469,7 +421,6 @@ async function playSequence(names, speakerEl, reference=false){
 
   const kind = reference ? MODE : "black";
 
-  // precarga
   const urls = names.map(n => SAMPLES[n]?.[kind]).filter(Boolean);
   const buffers = [];
   for(const u of urls) buffers.push(await loadBuffer(u));
@@ -490,16 +441,12 @@ async function playSequence(names, speakerEl, reference=false){
   }, totalMs);
 }
 
-/* =========================================================
-   ARRIBA: Escala de referencia (clicable) + nombres debajo
-   ========================================================= */
+/* ===================== Referencia: notas + nombres ===================== */
 const refNotes = document.getElementById("refNotes");
 const refNames = document.getElementById("refNames");
 
-// para la referencia (viewBox 260), adaptamos y un poco más arriba:
 function refY(sol){
-  // Escalamos desde el MAP de 280 a 260 (aprox)
-  // y ajustamos un pelín para que quede visualmente bien
+  // Pasamos de y(280) a viewBox 260 manteniendo proporción
   return (MAP[sol].y / 280) * 260 - 30;
 }
 
@@ -508,7 +455,7 @@ SCALE.forEach((s,i)=>{
   const y = refY(s);
 
   const g = document.createElementNS("http://www.w3.org/2000/svg","g");
-  g.innerHTML = noteSVG(x, y, MAP[s].ledgerLines);
+  g.innerHTML = noteSVG(x, y);
   g.style.cursor = "pointer";
   g.addEventListener("pointerdown", (e) => {
     e.preventDefault();
@@ -516,16 +463,25 @@ SCALE.forEach((s,i)=>{
   });
   refNotes.appendChild(g);
 
-  // ✅ nombre debajo
   refNames.insertAdjacentHTML("beforeend",
     `<text x="${x-14}" y="248" font-size="16" font-weight="900">${s}</text>`
   );
 });
 
-/* =========================================================
-   ABAJO: Nivel actual (pentagrama + banda amarilla + drop)
-   - 1 ficha a la vez (para asegurar orden izquierda->derecha)
-   ========================================================= */
+/* ===================== Niveles ===================== */
+const LEVELS = [
+  ["do","re","mi","sol"],
+  ["do","mi","sol","fa"],
+  ["re","mi","fa","sol"],
+  ["mi","re","do","sol"],
+  ["sol","fa","mi","re"],
+  ["do","re","fa","sol"],
+  ["re","fa","sol","la"],
+  ["mi","fa","sol","la"],
+  ["sol","la","si","do"],
+  ["la","si","do","re"],
+];
+
 const lvlTitle = document.getElementById("lvlTitle");
 const btnListen = document.getElementById("btnListen");
 const btnChild  = document.getElementById("btnChild");
@@ -538,10 +494,9 @@ const pool = document.getElementById("pool");
 
 let levelIndex = 0;
 let target = null;
-let placed = [];       // lo que ya va colocado
-let tokenIdx = 0;      // ficha actual (0..3)
+let placed = [];
+let tokenIdx = 0;
 
-// Slots en X (4 posiciones)
 const SLOT_X = [300, 390, 480, 570];
 
 function showBand(sol, flash=false){
@@ -556,7 +511,7 @@ function showBand(sol, flash=false){
   rect.setAttribute("height","18");
   rect.setAttribute("rx","6");
   rect.setAttribute("fill", getComputedStyle(document.documentElement).getPropertyValue("--yellow").trim() || "rgba(180,140,0,.35)");
-  if(flash) rect.classList.add("bandFlash"); // ✅ sugerencia aceptada: flash al acertar
+  if(flash) rect.classList.add("bandFlash");
   bandG.appendChild(rect);
 }
 
@@ -578,7 +533,6 @@ function clearLevelUI(){
 }
 
 function setLockedState(locked){
-  // bloquea todo menos "siguiente"
   btnListen.disabled = locked;
   btnChild.disabled  = locked;
   btnNegra.disabled  = locked;
@@ -592,39 +546,30 @@ function isComplete(){
 function onComplete(){
   btnNext.disabled = false;
   setLockedState(true);
-  btnChild.classList.add("ok"); // ✅ play del alumno verde
+  btnChild.classList.add("ok");
 }
 
 function addPlacedNote(sol, slotIdx){
-  // insertar nota en SVG
   placedG.insertAdjacentHTML("beforeend",
-    noteSVG(SLOT_X[slotIdx], MAP[sol].y, MAP[sol].ledgerLines)
+    noteSVG(SLOT_X[slotIdx], MAP[sol].y)
   );
 
-  // marcador verde
   const m = document.createElement("div");
   m.className = "marker";
   m.style.left = (SLOT_X[slotIdx] / 760 * levelStage.clientWidth) + "px";
   m.style.top  = (MAP[sol].y / 280 * levelStage.clientHeight) + "px";
   levelStage.appendChild(m);
-
-  // ✅ que suenen al hacer clic:
-  // Añadimos "hitboxes" invisibles encima (más simple: delegación sobre el SVG)
-  // Guardamos un dataset para mapear x cercano -> nota. (ver handler abajo)
 }
 
 function renderCurrentToken(){
   pool.innerHTML = "";
-
   if(tokenIdx >= target.length) return;
 
   const n = target[tokenIdx];
-
   const t = document.createElement("div");
   t.className = "token";
   t.dataset.note = n;
 
-  // icono + nombre (✅ en el ejercicio ahora sí aparece el nombre)
   t.innerHTML = `
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M14 3v10.4a3.6 3.6 0 1 1-2-3.2V5.2l8-2.2V13a3.6 3.6 0 1 1-2-3.2V3z" fill="#fff"/>
@@ -632,10 +577,8 @@ function renderCurrentToken(){
     <div style="font-weight:900;font-size:16px;letter-spacing:.3px">${n}</div>
   `;
 
-  // tap: suena (SIEMPRE negra en el ejercicio)
   t.addEventListener("click", () => playNote(n, speakerLvl, false).catch(console.error));
 
-  // drag
   t.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     getAudioContext();
@@ -679,25 +622,22 @@ function renderCurrentToken(){
       const inside = (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom);
       if(!inside) return;
 
-      const slotIdx = tokenIdx; // ✅ orden izquierda->derecha garantizado
+      const slotIdx = tokenIdx;
       const relY = (ev.clientY - r.top) / r.height * 280;
       const best = nearestSolByY(relY);
 
       const expected = target[slotIdx];
       if(best === expected){
-        // ✅ flash de banda amarilla al acertar
         showBand(best, true);
 
         placed[slotIdx] = best;
         addPlacedNote(best, slotIdx);
 
-        // suena la nota acertada (SIEMPRE negra)
         playNote(best, speakerLvl, false).catch(console.error);
 
         tokenIdx++;
         renderCurrentToken();
 
-        // completar nivel
         if(isComplete()){
           onComplete();
         }
@@ -727,24 +667,15 @@ function startLevel(i){
   renderCurrentToken();
 }
 
-/* =========================================================
-   ▶ Escuchar objetivo (SIEMPRE negras)
-   ▶ Escuchar lo que llevo (SIEMPRE negras)
-   ========================================================= */
 btnListen.addEventListener("click", () => {
   if(btnListen.disabled) return;
   playSequence(target, speakerLvl, false).catch(console.error);
 });
-
 btnChild.addEventListener("click", () => {
   if(btnChild.disabled) return;
   const current = placed.filter(Boolean);
   playSequence(current, speakerLvl, false).catch(console.error);
 });
-
-/* =========================================================
-   → Siguiente nivel (solo cuando completo)
-   ========================================================= */
 btnNext.addEventListener("click", () => {
   if(btnNext.disabled) return;
   const next = levelIndex + 1;
@@ -752,12 +683,7 @@ btnNext.addEventListener("click", () => {
   else startLevel(0);
 });
 
-/* =========================================================
-   ✅ Notas colocadas suenan al hacer clic
-   (usamos la posición X de click para detectar el slot)
-   ========================================================= */
 document.getElementById("lvlSvg").addEventListener("pointerdown", (e) => {
-  // Solo si ya hay alguna nota colocada
   if(!placed.some(Boolean)) return;
 
   const svg = document.getElementById("lvlSvg");
@@ -767,27 +693,20 @@ document.getElementById("lvlSvg").addEventListener("pointerdown", (e) => {
   if(!ctm) return;
   const loc = pt.matrixTransform(ctm.inverse());
 
-  // buscamos el slot más cercano en X
   let bestSlot = -1;
   let bestDx = Infinity;
   for(let i=0;i<SLOT_X.length;i++){
     const dx = Math.abs(SLOT_X[i] - loc.x);
     if(dx < bestDx){ bestDx = dx; bestSlot = i; }
   }
-
-  // umbral para que no suene si clicas en cualquier lado
   if(bestSlot === -1 || bestDx > 40) return;
 
   const sol = placed[bestSlot];
   if(!sol) return;
 
-  // Suena esa nota (SIEMPRE negra)
   playNote(sol, speakerLvl, false).catch(console.error);
 });
 
-/* =========================================================
-   Arranque
-   ========================================================= */
 startLevel(0);
 </script>
 </body>
