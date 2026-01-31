@@ -348,7 +348,12 @@ const OFF_REF = { do:+2, re:+1, mi:0, fa:-1, sol:-2, la:-3, si:-4, do2:-5 };
 
 function yForEX(note){
   const step = STAFF_EX.lineGap / 2;
-  return STAFF_EX.bottom + OFF_EX[note] * step;
+  let y = STAFF_EX.bottom + OFF_EX[note] * step;
+
+  if(note === "re") y += -1;   // baja 2px (más “tocando” la línea)
+  // si quieres subirlo, usa y -= 2
+
+  return y;
 }
 
 // ✅ ajuste fino SOLO en referencia para que el RE se vea “clavado”
