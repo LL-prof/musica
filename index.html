@@ -49,13 +49,24 @@ body{
   letter-spacing:.3px;
   user-select:none;
 }
+
+/* CONTROLES (ahora entre pentagramas) */
+.controlsBar{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  flex-wrap:wrap;
+  padding:12px 14px 14px;
+}
 .controls{
   display:flex;
   gap:10px;
   align-items:center;
-  justify-content:flex-end;
+  justify-content:center;
   flex-wrap:wrap;
 }
+
 .ctrlBtn{
   width:56px;height:46px;border-radius:14px;
   border:2px solid rgba(255,255,255,.35);
@@ -93,6 +104,18 @@ body{
 }
 .childBtn.ok:hover{ background:#dbffea; }
 
+/* estrellas */
+.starBox{
+  min-width:86px;
+  text-align:center;
+  font-size:20px;
+  letter-spacing:2px;
+  user-select:none;
+  filter:drop-shadow(0 6px 10px rgba(0,0,0,.25));
+}
+.starBox .on{ color:#ffd54a; }
+.starBox .off{ color:rgba(255,255,255,.35); }
+
 .sheet{
   background:#fff;
   border-radius:16px;
@@ -111,24 +134,32 @@ svg{ width:100%; height:auto; display:block; }
 .pool{
   display:flex;
   justify-content:center;
-  gap:12px;
+  gap:14px;
   margin:10px 14px 16px;
   flex-wrap:wrap;
   min-height:100px;
 }
+
+/* ✅ tokens ya NO “recuadro”: forma tipo “ficha redonda” con nota */
 .token{
-  width:96px;height:104px;
-  background:#111;color:#fff;
-  border-radius:18px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:8px;
+  width:88px;height:96px;
+  border-radius:999px;
+  background:rgba(10,12,18,.92);
+  color:#fff;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
   cursor:grab;
   user-select:none;
   touch-action:none;
   box-shadow:0 10px 18px rgba(0,0,0,.25);
+  border:1px solid rgba(255,255,255,.14);
 }
 .token.locked{ opacity:.28; cursor:default; }
 .token svg{ width:34px; height:34px; display:block; }
+.token .lbl{ font-weight:900; font-size:14px; letter-spacing:.3px; opacity:.95; }
 
 /* marcador verde */
 .marker{
@@ -176,6 +207,21 @@ svg{ width:100%; height:auto; display:block; }
   width:100%;
   background:rgba(255,255,255,.08);
 }
+
+/* ✅ playhead vertical (barra que avanza) */
+.playhead{
+  position:absolute;
+  top:16px;
+  bottom:16px;
+  width:4px;
+  border-radius:999px;
+  background:rgba(255,60,60,.95);
+  box-shadow:0 10px 18px rgba(0,0,0,.25);
+  pointer-events:none;
+  opacity:0;
+  transform:translateX(-2px);
+}
+.playhead.show{ opacity:1; }
 </style>
 </head>
 
@@ -183,17 +229,9 @@ svg{ width:100%; height:auto; display:block; }
   <div class="wrap">
     <div class="panel">
 
+      <!-- CABECERA (solo título arriba) -->
       <div class="rowTop">
         <p class="title" id="lvlTitle">Nivel 1</p>
-
-        <div class="controls" aria-label="Controles">
-          <button class="ctrlBtn modeBtn active" id="btnNegra" aria-label="Referencia negra">N</button>
-          <button class="ctrlBtn modeBtn" id="btnBlanca" aria-label="Referencia blanca">B</button>
-
-          <button class="ctrlBtn" id="btnListen" aria-label="Escuchar objetivo">▶</button>
-          <button class="ctrlBtn childBtn" id="btnChild" aria-label="Escuchar lo que llevo">▶</button>
-          <button class="ctrlBtn" id="btnNext" aria-label="Siguiente" disabled>→</button>
-        </div>
       </div>
       <div class="hintBar"></div>
 
@@ -226,9 +264,33 @@ svg{ width:100%; height:auto; display:block; }
         </div>
       </div>
 
+      <!-- ✅ CONTROLES ENTRE PENTAGRAMAS -->
+      <div class="controlsBar" aria-label="Controles">
+        <div class="starBox" id="stars" aria-label="Estrellas">
+          <span class="on">★</span><span class="on">★</span><span class="on">★</span>
+        </div>
+
+        <div class="controls">
+          <!-- Modo duración SOLO PARA REFERENCIA -->
+          <button class="ctrlBtn modeBtn active" id="btnNegra" aria-label="Referencia negra">N</button>
+          <button class="ctrlBtn modeBtn" id="btnBlanca" aria-label="Referencia blanca">B</button>
+
+          <!-- Escuchar objetivo -->
+          <button class="ctrlBtn" id="btnListen" aria-label="Escuchar objetivo">▶</button>
+
+          <!-- Escuchar lo que llevo -->
+          <button class="ctrlBtn childBtn" id="btnChild" aria-label="Escuchar lo que llevo">▶</button>
+
+          <!-- Siguiente -->
+          <button class="ctrlBtn" id="btnNext" aria-label="Siguiente" disabled>→</button>
+        </div>
+      </div>
+
       <!-- ABAJO: EJERCICIO -->
       <div class="sheet">
         <div class="stage" id="levelStage">
+          <div class="playhead" id="playhead" aria-hidden="true"></div>
+
           <svg viewBox="0 0 760 280" id="lvlSvg" aria-label="Pentagrama del nivel">
             <g stroke="#000" stroke-width="2">
               <line x1="40" y1="80"  x2="720" y2="80"/>
@@ -239,7 +301,10 @@ svg{ width:100%; height:auto; display:block; }
             </g>
             <text x="54" y="155" font-size="56">𝄞</text>
 
+            <!-- banda amarilla -->
             <g id="bandG"></g>
+
+            <!-- notas colocadas -->
             <g id="placedG"></g>
           </svg>
 
@@ -275,51 +340,28 @@ const SAMPLES = {
 
 const SCALE = ["do","re","mi","fa","sol","la","si"];
 
-/* =========================================================
-   ✅ MAPEO NUEVO (CLAVADO): por pasos reales de pentagrama
-   - Paso = LINE_GAP/2 (línea/espacio)
-   - Base: MI = línea inferior del pentagrama
-   - RE = espacio bajo
-   - DO = línea auxiliar bajo
-   ========================================================= */
+/* ===================== MAPEO CLAVADO ===================== */
 const STAFF_EX = { top: 80, bottom: 180, lineGap: 25, viewH: 280 };
 const STAFF_REF = { top: 60, bottom: 160, lineGap: 25, viewH: 260 };
-const STEP_EX = STAFF_EX.lineGap / 2;   // 12.5
-const STEP_REF = STAFF_REF.lineGap / 2; // 12.5
 
-// offsets en "pasos" respecto a MI (mi=0) en clave de sol, como en tu imagen
-const OFF = {
-  do: +2,  // do: línea auxiliar bajo
-  re: +1,  // re: espacio bajo
-  mi:  0,  // mi: línea inferior
-  fa: -1,
-  sol:-2,
-  la: -3,
-  si: -4
-};
+// offsets en "pasos" respecto a MI (mi=0)
+const OFF = { do:+2, re:+1, mi:0, fa:-1, sol:-2, la:-3, si:-4 };
 
 function yFor(note, staff){
   const step = staff.lineGap / 2;
   return staff.bottom + OFF[note] * step;
 }
-
-// líneas auxiliares (arriba y abajo) correctas según posición
 function ledgerLinesRelY(noteY, staff){
   const lines = [];
-  const top = staff.top;
-  const bottom = staff.bottom;
-  const gap = staff.lineGap;
+  const top = staff.top, bottom = staff.bottom, gap = staff.lineGap;
 
-  // abajo: líneas en bottom+gap, bottom+2gap...
   if(noteY > bottom){
     const n = Math.floor((noteY - bottom) / gap + 1e-6);
     for(let i=1;i<=n;i++){
       const yLine = bottom + i*gap;
-      lines.push(yLine - noteY); // relativo al grupo de la nota
+      lines.push(yLine - noteY);
     }
   }
-
-  // arriba: líneas en top-gap, top-2gap...
   if(noteY < top){
     const n = Math.floor((top - noteY) / gap + 1e-6);
     for(let i=1;i<=n;i++){
@@ -327,17 +369,14 @@ function ledgerLinesRelY(noteY, staff){
       lines.push(yLine - noteY);
     }
   }
-
   return lines;
 }
-
 function ledgerLinesSVG(relYs){
   if(!relYs.length) return "";
   return relYs.map(ry =>
     `<line x1="-22" y1="${ry}" x2="22" y2="${ry}" stroke="#000" stroke-width="2"/>`
   ).join("");
 }
-
 function noteSVG(x, y, staff){
   const rels = ledgerLinesRelY(y, staff);
   return `
@@ -347,11 +386,9 @@ function noteSVG(x, y, staff){
     <line x1="10" y1="-2" x2="10" y2="-50" stroke="#000" stroke-width="3"/>
   </g>`;
 }
-
-// MAP del ejercicio (para banda amarilla y nearestSolByY)
 const MAP_EX = Object.fromEntries(SCALE.map(n => [n, { y: yFor(n, STAFF_EX) }]));
 
-/* ===================== Anti-solape ===================== */
+/* ===================== AUDIO ENGINE ===================== */
 let ctx = null;
 let isPlaying = false;
 let activeSources = [];
@@ -377,6 +414,7 @@ function stopPlayback(){
   activeSources = [];
   isPlaying = false;
   hideSpeakerAll();
+  stopPlayhead();
 }
 function playBufferAt(buffer, startTime, gainValue=1.0){
   const ac = getAudioContext();
@@ -413,6 +451,47 @@ function showSpeaker(el){ el.classList.add("show"); }
 function hideSpeaker(el){ el.classList.remove("show"); }
 function hideSpeakerAll(){ hideSpeaker(speakerRef); hideSpeaker(speakerLvl); }
 
+/* ===================== ✅ Playhead (barra que avanza) ===================== */
+const levelStage = document.getElementById("levelStage");
+const playhead = document.getElementById("playhead");
+let playheadRAF = null;
+let playheadT0 = 0;
+let playheadDur = 0;
+
+function stopPlayhead(){
+  if(playheadRAF) cancelAnimationFrame(playheadRAF);
+  playheadRAF = null;
+  playhead.classList.remove("show");
+}
+function startPlayhead(totalSeconds){
+  stopPlayhead();
+  if(!totalSeconds || totalSeconds <= 0) return;
+
+  const xStart = 40;
+  const xEnd = 720;
+
+  playheadT0 = performance.now();
+  playheadDur = totalSeconds * 1000;
+  playhead.classList.add("show");
+
+  const tick = () => {
+    const now = performance.now();
+    const t = Math.min(1, (now - playheadT0) / playheadDur);
+    const x = xStart + (xEnd - xStart) * t;
+
+    // convertir x del viewBox (760) a px dentro del stage
+    const px = (x / 760) * levelStage.clientWidth;
+    playhead.style.left = px + "px";
+
+    if(t < 1){
+      playheadRAF = requestAnimationFrame(tick);
+    }else{
+      stopPlayhead();
+    }
+  };
+  playheadRAF = requestAnimationFrame(tick);
+}
+
 /* ===================== Play note / sequence ===================== */
 async function playNote(name, speakerEl, reference=false){
   stopPlayback();
@@ -426,6 +505,10 @@ async function playNote(name, speakerEl, reference=false){
   const buf = await loadBuffer(url);
   const ac = getAudioContext();
   const t0 = ac.currentTime + 0.03;
+
+  // ✅ playhead (nota suelta)
+  startPlayhead(buf.duration + 0.08);
+
   const dur = playBufferAt(buf, t0, 1.0);
 
   setTimeout(() => {
@@ -433,6 +516,7 @@ async function playNote(name, speakerEl, reference=false){
     isPlaying = false;
   }, (dur * 1000) + 120);
 }
+
 async function playSequence(names, speakerEl, reference=false){
   if(isPlaying) return;
 
@@ -441,14 +525,18 @@ async function playSequence(names, speakerEl, reference=false){
   showSpeaker(speakerEl);
 
   const kind = reference ? MODE : "black";
-
   const urls = names.map(n => SAMPLES[n]?.[kind]).filter(Boolean);
+
   const buffers = [];
   for(const u of urls) buffers.push(await loadBuffer(u));
 
   const ac = getAudioContext();
   let t = ac.currentTime + 0.05;
   const GAP = 0.08;
+
+  // ✅ calcular duración total real para playhead
+  const totalSec = buffers.reduce((acc,b)=>acc + b.duration, 0) + (Math.max(0, buffers.length - 1) * GAP) + 0.10;
+  startPlayhead(totalSec);
 
   for(const buf of buffers){
     const d = playBufferAt(buf, t, 1.0);
@@ -468,7 +556,7 @@ const refNames = document.getElementById("refNames");
 
 SCALE.forEach((s,i)=>{
   const x = 170 + i*80;
-  const y = yFor(s, STAFF_REF); // ✅ CLAVADO: sin escalados ni -30
+  const y = yFor(s, STAFF_REF);
 
   const g = document.createElementNS("http://www.w3.org/2000/svg","g");
   g.innerHTML = noteSVG(x, y, STAFF_REF);
@@ -505,8 +593,24 @@ const btnNext   = document.getElementById("btnNext");
 
 const bandG = document.getElementById("bandG");
 const placedG = document.getElementById("placedG");
-const levelStage = document.getElementById("levelStage");
 const pool = document.getElementById("pool");
+
+/* ✅ Estrellas */
+const starsEl = document.getElementById("stars");
+let stars = 3;               // 0..3
+const STAR_MAX = 3;
+function renderStars(){
+  const on = stars;
+  let html = "";
+  for(let i=0;i<STAR_MAX;i++){
+    html += `<span class="${i<on ? "on":"off"}">${i<on ? "★":"★"}</span>`;
+  }
+  starsEl.innerHTML = html;
+}
+function penalizeStar(){
+  stars = Math.max(0, stars - 1);
+  renderStars();
+}
 
 let levelIndex = 0;
 let target = null;
@@ -530,7 +634,6 @@ function showBand(sol, flash=false){
   if(flash) rect.classList.add("bandFlash");
   bandG.appendChild(rect);
 }
-
 function nearestSolByY(y){
   let best=null, bestD=Infinity;
   for(const k of SCALE){
@@ -546,6 +649,7 @@ function clearLevelUI(){
   levelStage.querySelectorAll(".marker").forEach(m => m.remove());
   pool.innerHTML = "";
   btnChild.classList.remove("ok");
+  stopPlayhead();
 }
 
 function setLockedState(locked){
@@ -559,9 +663,15 @@ function isComplete(){
   return placed.length === target.length && placed.join("|") === target.join("|");
 }
 
+/* ✅ Al completar: bloqueamos TODO menos el botón verde (btnChild) */
 function onComplete(){
   btnNext.disabled = false;
+
+  // bloquea el resto
   setLockedState(true);
+
+  // pero deja btnChild SIEMPRE disponible para escuchar lo producido
+  btnChild.disabled = false;
   btnChild.classList.add("ok");
 }
 
@@ -592,11 +702,13 @@ function renderCurrentToken(){
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M14 3v10.4a3.6 3.6 0 1 1-2-3.2V5.2l8-2.2V13a3.6 3.6 0 1 1-2-3.2V3z" fill="#fff"/>
     </svg>
-    <div style="font-weight:900;font-size:16px;letter-spacing:.3px">${n}</div>
+    <div class="lbl">${n}</div>
   `;
 
+  // click: oír la nota suelta (negra)
   t.addEventListener("click", () => playNote(n, speakerLvl, false).catch(console.error));
 
+  // drag & drop
   t.addEventListener("pointerdown", (e) => {
     e.preventDefault();
     getAudioContext();
@@ -645,6 +757,7 @@ function renderCurrentToken(){
       const best = nearestSolByY(relY);
 
       const expected = target[slotIdx];
+
       if(best === expected){
         showBand(best, true);
 
@@ -659,6 +772,9 @@ function renderCurrentToken(){
         if(isComplete()){
           onComplete();
         }
+      }else{
+        // ✅ penalización por fallo (estrella)
+        penalizeStar();
       }
     };
 
@@ -677,6 +793,10 @@ function startLevel(i){
   placed = Array(target.length).fill(null);
   tokenIdx = 0;
 
+  // ✅ reset estrellas por nivel
+  stars = STAR_MAX;
+  renderStars();
+
   lvlTitle.textContent = `Nivel ${levelIndex + 1}`;
   btnNext.disabled = true;
   setLockedState(false);
@@ -689,11 +809,15 @@ btnListen.addEventListener("click", () => {
   if(btnListen.disabled) return;
   playSequence(target, speakerLvl, false).catch(console.error);
 });
+
 btnChild.addEventListener("click", () => {
   if(btnChild.disabled) return;
   const current = placed.filter(Boolean);
+  // si no hay nada puesto aún, no hacemos play
+  if(!current.length) return;
   playSequence(current, speakerLvl, false).catch(console.error);
 });
+
 btnNext.addEventListener("click", () => {
   if(btnNext.disabled) return;
   const next = levelIndex + 1;
@@ -701,6 +825,7 @@ btnNext.addEventListener("click", () => {
   else startLevel(0);
 });
 
+// tocar nota colocada para oírla
 document.getElementById("lvlSvg").addEventListener("pointerdown", (e) => {
   if(!placed.some(Boolean)) return;
 
