@@ -350,7 +350,7 @@ function yForEX(note){
   const step = STAFF_EX.lineGap / 2;
   let y = STAFF_EX.bottom + OFF_EX[note] * step;
 
-  if(note === "re") y += -1;   // baja 2px (más “tocando” la línea)
+  if(note === "re") y += -3;   // baja 2px (más “tocando” la línea)
   // si quieres subirlo, usa y -= 2
 
   return y;
