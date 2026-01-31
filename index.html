@@ -357,7 +357,7 @@ function yForREF(note){
   let y = STAFF_REF.bottom + OFF_REF[note] * step;
 
   // aquí es donde lo clavamos “a ojo” para que RE quede perfecto en el pentagrama superior
-  if(note === "re") y += +7;    // prueba: si lo quieres un pelín más “tocando”, sube a +3
+  if(note === "re") y += -7;    // prueba: si lo quieres un pelín más “tocando”, sube a +3
   return y;
 }
 
